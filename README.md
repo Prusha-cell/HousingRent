@@ -26,10 +26,10 @@ HousingRent/                # корень проекта
 │   ├── signals.py           # создание профиля при регистрации
 │   └── tests.py             # тесты для users
 │
-├── Ads/                # приложение для объявлений 
+├── listings/                # приложение для объявлений 
 │   ├── __init__.py
 │   ├── apps.py
-│   ├── models.py            # Ad модель
+│   ├── models.py            # Listing модель
 │   ├── serializers.py
 │   ├── views.py
 │   ├── urls.py
