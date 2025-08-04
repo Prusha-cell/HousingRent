@@ -1,0 +1,401 @@
+[
+  {
+    "model": "auth.user",
+    "pk": 1,
+    "fields": {
+      "password": "pbkdf2_sha256$1000000$oEUvD4KJ7xWirsPBgZRz5X$NgdYONp1Tz2dqUkMNLoG/ls080k7tO8VFlaoN2n5CHM=",
+      "last_login": "2025-08-01T08:32:32.280Z",
+      "is_superuser": true,
+      "username": "admin",
+      "first_name": "",
+      "last_name": "",
+      "email": "admin@admin.com",
+      "is_staff": true,
+      "is_active": true,
+      "date_joined": "2025-08-01T08:31:35.764Z",
+      "groups": [],
+      "user_permissions": []
+    }
+  },
+  {
+    "model": "auth.user",
+    "pk": 2,
+    "fields": {
+      "password": "pbkdf2_sha256$1000000$SAm6U4Z1LCbikvLzUvnwqQ$52ifCsQ3LmfbX6wv0ucoNWgIdImMaN9fY2/JWFyRBuk=",
+      "last_login": null,
+      "is_superuser": false,
+      "username": "user",
+      "first_name": "",
+      "last_name": "",
+      "email": "",
+      "is_staff": false,
+      "is_active": true,
+      "date_joined": "2025-08-01T08:33:43Z",
+      "groups": [],
+      "user_permissions": []
+    }
+  },
+  {
+    "model": "auth.user",
+    "pk": 4,
+    "fields": {
+      "password": "pbkdf2_sha256$1000000$579LDaU8hEXLo3149sjUfP$GjPMZSuGuafo2d19wddLUnvR7Gb2TWjpeaoD1XdWva4=",
+      "last_login": null,
+      "is_superuser": false,
+      "username": "user_2",
+      "first_name": "",
+      "last_name": "",
+      "email": "",
+      "is_staff": false,
+      "is_active": true,
+      "date_joined": "2025-08-01T12:38:16.213Z",
+      "groups": [],
+      "user_permissions": []
+    }
+  },
+  {
+    "model": "auth.user",
+    "pk": 5,
+    "fields": {
+      "password": "pbkdf2_sha256$1000000$M9GoUKRU43KMlRQUkdhxOH$xF+6krMsGoYD3x6jRAubSwzrIhxdv53uR3wJw10kIlY=",
+      "last_login": null,
+      "is_superuser": false,
+      "username": "user_4",
+      "first_name": "",
+      "last_name": "",
+      "email": "",
+      "is_staff": false,
+      "is_active": true,
+      "date_joined": "2025-08-04T06:57:31.051Z",
+      "groups": [],
+      "user_permissions": []
+    }
+  },
+  {
+    "model": "auth.user",
+    "pk": 6,
+    "fields": {
+      "password": "pbkdf2_sha256$1000000$I9pXMz4HpkBTAqqBJmG0dK$YIrpWNZfiXCuiqzi2Pw3FCvg89ohoCVjyK9RPCplO4w=",
+      "last_login": null,
+      "is_superuser": false,
+      "username": "user_3",
+      "first_name": "",
+      "last_name": "",
+      "email": "",
+      "is_staff": true,
+      "is_active": true,
+      "date_joined": "2025-08-04T07:21:23Z",
+      "groups": [],
+      "user_permissions": []
+    }
+  },
+  {
+    "model": "auth.user",
+    "pk": 7,
+    "fields": {
+      "password": "pbkdf2_sha256$1000000$nCRryIiHiPd8519aceOlt2$GJal9qSxNLSQgBuVUwgOTOpcdTjW20EcP0FMTocUpQM=",
+      "last_login": null,
+      "is_superuser": false,
+      "username": "user_5",
+      "first_name": "",
+      "last_name": "",
+      "email": "",
+      "is_staff": true,
+      "is_active": true,
+      "date_joined": "2025-08-04T07:35:27Z",
+      "groups": [],
+      "user_permissions": []
+    }
+  },
+  {
+    "model": "sessions.session",
+    "pk": "u9zfs32egeypwhh4odvv2jtlx5v1xc41",
+    "fields": {
+      "session_data": ".eJxVjMsOwiAQRf-FtSE8BgZcuvcbyMAQqRqalHZl_Hdt0oVu7znnvkSibW1pG3VJE4uz0OL0u2Uqj9p3wHfqt1mWua_LlOWuyIMOeZ25Pi-H-3fQaLRvHTFbUyJgJm1dQMVQCoIFgIo5as3BKWZ02aKn4Kx3xBBM8aqSVUa8P8BlNuE:1uhlBo:L45DQZXm_eRtQt6uGbiCXRuwLWwpjlvQLwlF_SfA5Kk",
+      "expire_date": "2025-08-15T08:32:32.294Z"
+    }
+  },
+  {
+    "model": "users.userprofile",
+    "pk": 1,
+    "fields": {
+      "user": 1,
+      "role": "landlord"
+    }
+  },
+  {
+    "model": "users.userprofile",
+    "pk": 2,
+    "fields": {
+      "user": 2,
+      "role": "tenant"
+    }
+  },
+  {
+    "model": "users.userprofile",
+    "pk": 3,
+    "fields": {
+      "user": 4,
+      "role": "guest"
+    }
+  },
+  {
+    "model": "users.userprofile",
+    "pk": 4,
+    "fields": {
+      "user": 5,
+      "role": "tenant"
+    }
+  },
+  {
+    "model": "users.userprofile",
+    "pk": 5,
+    "fields": {
+      "user": 6,
+      "role": "landlord"
+    }
+  },
+  {
+    "model": "users.userprofile",
+    "pk": 6,
+    "fields": {
+      "user": 7,
+      "role": "guest"
+    }
+  },
+  {
+    "model": "bookings.booking",
+    "pk": 2,
+    "fields": {
+      "listing": 3,
+      "tenant": 1,
+      "start_date": "2025-08-04",
+      "end_date": "2025-08-19",
+      "status": "confirmed",
+      "created_at": "2025-08-02T09:30:09.686Z"
+    }
+  },
+  {
+    "model": "bookings.booking",
+    "pk": 3,
+    "fields": {
+      "listing": 2,
+      "tenant": 4,
+      "start_date": "2025-08-11",
+      "end_date": "2025-08-31",
+      "status": "cancelled",
+      "created_at": "2025-08-02T09:32:24.014Z"
+    }
+  },
+  {
+    "model": "bookings.booking",
+    "pk": 4,
+    "fields": {
+      "listing": 1,
+      "tenant": 2,
+      "start_date": "2025-08-02",
+      "end_date": "2025-08-06",
+      "status": "confirmed",
+      "created_at": "2025-08-02T09:35:00.580Z"
+    }
+  },
+  {
+    "model": "bookings.booking",
+    "pk": 5,
+    "fields": {
+      "listing": 4,
+      "tenant": 1,
+      "start_date": "2025-08-04",
+      "end_date": "2025-08-11",
+      "status": "confirmed",
+      "created_at": "2025-08-04T06:02:14.560Z"
+    }
+  },
+  {
+    "model": "listings.listing",
+    "pk": 1,
+    "fields": {
+      "landlord": 1,
+      "title": "listing_1",
+      "description": "listing_1listing_1listing_1listing_1listing_1listing_1listing_1",
+      "location_city": "Odessa",
+      "location_district": "Malinovsky",
+      "price": "1999.99",
+      "rooms": 3,
+      "housing_type": "house",
+      "status": "available",
+      "created_at": "2025-08-02T08:20:35.393Z",
+      "views_count": 0
+    }
+  },
+  {
+    "model": "listings.listing",
+    "pk": 2,
+    "fields": {
+      "landlord": 2,
+      "title": "Listing_2",
+      "description": "Listing_2Listing_2Listing_2Listing_2Listing_2Listing_2Listing_2",
+      "location_city": "Kyiv",
+      "location_district": "Osachorky",
+      "price": "1000.00",
+      "rooms": 2,
+      "housing_type": "studio",
+      "status": "unavailable",
+      "created_at": "2025-08-02T08:23:59.952Z",
+      "views_count": 0
+    }
+  },
+  {
+    "model": "listings.listing",
+    "pk": 3,
+    "fields": {
+      "landlord": 4,
+      "title": "Listing_3",
+      "description": "Listing_2Listing_2Listin4g_2Listing_2Listing_2Listing_2Listing_2Listing_",
+      "location_city": "Uman",
+      "location_district": "central",
+      "price": "1500.00",
+      "rooms": 4,
+      "housing_type": "apartment",
+      "status": "maintenance",
+      "created_at": "2025-08-02T08:25:52.021Z",
+      "views_count": 0
+    }
+  },
+  {
+    "model": "listings.listing",
+    "pk": 4,
+    "fields": {
+      "landlord": 1,
+      "title": "listing_4",
+      "description": "listing_4listing_4listing_4listing_4listing_4listing_4listing_4listing_4listing_4listing_4listing_4listing_4",
+      "location_city": "Stutgart",
+      "location_district": "Nord",
+      "price": "2000.00",
+      "rooms": 3,
+      "housing_type": "apartment",
+      "status": "available",
+      "created_at": "2025-08-03T21:31:49.842Z",
+      "views_count": 0
+    }
+  },
+  {
+    "model": "listings.listing",
+    "pk": 5,
+    "fields": {
+      "landlord": 1,
+      "title": "listing_5",
+      "description": "listing_4listing_4listing_4listing_4listing_4listing_4listing_4listing_4listing_4listing_4listing_4listing_4",
+      "location_city": "Stutgart",
+      "location_district": "Nord",
+      "price": "2000.00",
+      "rooms": 3,
+      "housing_type": "apartment",
+      "status": "available",
+      "created_at": "2025-08-03T21:32:55.234Z",
+      "views_count": 0
+    }
+  },
+  {
+    "model": "listings.listing",
+    "pk": 6,
+    "fields": {
+      "landlord": 1,
+      "title": "listin_5",
+      "description": "ggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+      "location_city": "Uman",
+      "location_district": "Nord",
+      "price": "50.00",
+      "rooms": 4,
+      "housing_type": "apartment",
+      "status": "available",
+      "created_at": "2025-08-03T21:44:17.073Z",
+      "views_count": 0
+    }
+  },
+  {
+    "model": "reviews.review",
+    "pk": 1,
+    "fields": {
+      "listing": 3,
+      "tenant": 1,
+      "rating": 3,
+      "comment": "test_test_test_test_test_test_test_test_test_test_test_test_test_test_test_test_test_test_test_",
+      "created_at": "2025-08-02T10:10:44.919Z"
+    }
+  },
+  {
+    "model": "reviews.review",
+    "pk": 2,
+    "fields": {
+      "listing": 2,
+      "tenant": 2,
+      "rating": 4,
+      "comment": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "created_at": "2025-08-02T10:11:30.778Z"
+    }
+  },
+  {
+    "model": "analytics.searchhistory",
+    "pk": 1,
+    "fields": {
+      "user": 1,
+      "keyword": "odessa",
+      "searched_at": "2025-08-02T09:47:44.383Z"
+    }
+  },
+  {
+    "model": "analytics.searchhistory",
+    "pk": 2,
+    "fields": {
+      "user": 4,
+      "keyword": "uman",
+      "searched_at": "2025-08-02T09:48:10.072Z"
+    }
+  },
+  {
+    "model": "analytics.searchhistory",
+    "pk": 3,
+    "fields": {
+      "user": 4,
+      "keyword": "house",
+      "searched_at": "2025-08-02T09:48:29.742Z"
+    }
+  },
+  {
+    "model": "analytics.listingview",
+    "pk": 1,
+    "fields": {
+      "user": 1,
+      "listing": 3,
+      "viewed_at": "2025-08-02T09:44:03.789Z"
+    }
+  },
+  {
+    "model": "analytics.listingview",
+    "pk": 2,
+    "fields": {
+      "user": 2,
+      "listing": 2,
+      "viewed_at": "2025-08-02T09:44:49.985Z"
+    }
+  },
+  {
+    "model": "analytics.listingview",
+    "pk": 3,
+    "fields": {
+      "user": 4,
+      "listing": 1,
+      "viewed_at": "2025-08-02T09:45:02.866Z"
+    }
+  },
+  {
+    "model": "analytics.listingview",
+    "pk": 4,
+    "fields": {
+      "user": 1,
+      "listing": 2,
+      "viewed_at": "2025-08-02T09:45:42.394Z"
+    }
+  }
+]

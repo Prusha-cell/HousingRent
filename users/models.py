@@ -2,6 +2,7 @@ from django.contrib.auth.models import User
 from django.db import models
 
 from bookings.choices import BookingStatus
+from listings.choices import ListingStatus
 from .choices import UserRole
 from datetime import date
 
@@ -55,7 +56,7 @@ class Tenant(User):
         """
         Example method: returns confirmed bookings that have not ended as of today.
         """
-        return self.booking_set.filter(
+        return self.bookings.filter(
             status=BookingStatus.CONFIRMED,
             end_date__gte=date.today()
         )
@@ -83,4 +84,4 @@ class Landlord(User):
         """
         Returns the landlord's active listings.
         """
-        return self.listings.filter(is_active=True)
+        return self.listings.filter(status=ListingStatus.AVAILABLE)

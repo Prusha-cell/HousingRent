@@ -12,7 +12,7 @@ class Listing(models.Model):
         related_name='listings',
         help_text="Landlord who owns this listing"
     )
-    title = models.CharField(max_length=255)
+    title = models.CharField(max_length=255, unique=True)
     description = models.TextField()
     location_city = models.CharField(max_length=100)
     location_district = models.CharField(max_length=100)

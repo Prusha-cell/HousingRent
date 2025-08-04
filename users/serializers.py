@@ -6,9 +6,15 @@ from rest_framework import serializers
 
 
 class UserProfileSerializer(serializers.ModelSerializer):
+    # hidden-поле, автоматически берёт request.user
+    user = serializers.HiddenField(
+        default=serializers.CurrentUserDefault()
+    )
+
     class Meta:
         model = UserProfile
-        fields = ('role',)  # ('role',) - прописываем как кортеж, так как это итерируемый объект
+        fields = ('role', 'user')
+        read_only_fields = ('user',)   # ('user',) - прописываем как кортеж, так как это итерируемый объект
 
 
 class UserSerializer(serializers.ModelSerializer):
