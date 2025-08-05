@@ -1,8 +1,23 @@
 from django.contrib.auth.models import User
-from .models import UserProfile, Tenant, Landlord
+from users.models import UserProfile, Tenant, Landlord
 from bookings.serializers import BookingSerializer
 from listings.serializers import ListingSerializer
 from rest_framework import serializers
+from .base_registration import BaseUserRegisterSerializer
+from users.choices import UserRole
+
+
+class GuestSerializer(serializers.ModelSerializer):
+    role = serializers.CharField(source='profile.role', read_only=True)
+
+    class Meta:
+        model = User
+        fields = ('id', 'username', 'email', 'role')
+        read_only_fields = fields
+
+
+
+
 
 
 class UserProfileSerializer(serializers.ModelSerializer):

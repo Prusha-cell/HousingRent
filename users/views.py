@@ -1,19 +1,17 @@
 from django.contrib.auth.models import User
-from rest_framework import viewsets, permissions
+from rest_framework import viewsets, permissions, generics, mixins
+from rest_framework.permissions import AllowAny
 
 from .models import Tenant, Landlord, UserProfile
-from .serializers import (
+from users.serializers.profiles import (
     UserSerializer,
     TenantSerializer,
     LandlordSerializer,
     UserProfileSerializer,
 )
 
+from .serializers.registration_for_users import GuestRegistrationSerializer
 
-# users/views.py
-from rest_framework import generics, permissions
-from .models import UserProfile
-# from .serializers import UserProfileSerializer
 
 class UserProfileDetailAPIView(generics.RetrieveUpdateAPIView):
     """
@@ -26,7 +24,6 @@ class UserProfileDetailAPIView(generics.RetrieveUpdateAPIView):
     def get_object(self):
         # возвращаем профиль именно того, кто запросил
         return self.request.user.profile
-
 
 
 # # Общий ViewSet для работы с профилями (только для админов, например)
@@ -55,3 +52,21 @@ class LandlordViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Landlord.objects.all()
     serializer_class = LandlordSerializer
     # permission_classes = [permissions.IsAuthenticated]
+
+
+# class GuestRegisterView(generics.CreateAPIView):
+#     serializer_class = GuestRegistrationSerializer
+#     permission_classes = []  # анонимам доступно
+
+
+class GuestRegisterView(mixins.CreateModelMixin,
+                        viewsets.GenericViewSet):
+    """
+    POST /api/users/guest-register/
+    """
+    queryset = User.objects.none()
+    serializer_class = GuestRegistrationSerializer
+
+    # разрешаем анонимам
+    authentication_classes = []          # <— отключаем глобальные JWTAuth
+    permission_classes = [AllowAny]

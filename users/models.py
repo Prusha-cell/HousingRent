@@ -22,7 +22,7 @@ class UserProfile(models.Model):
         max_length=20,
         choices=UserRole.choices,
         default=UserRole.GUEST,
-        help_text='User role: tenant, landlord, or guest'
+        help_text='User role: tenant, landlord, admin or guest'
     )
 
     def __str__(self) -> str:

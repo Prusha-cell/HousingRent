@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 import os
+from datetime import timedelta
 from pathlib import Path
 import environ
 
@@ -50,6 +51,7 @@ INSTALLED_APPS = [
     'reviews',
     'analytics',
     'rest_framework',
+    'rest_framework_simplejwt.token_blacklist',
 ]
 
 MIDDLEWARE = [
@@ -142,3 +144,44 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+
+REST_FRAMEWORK = {
+    # 'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    # 'PAGE_SIZE': 5,  # Теперь по умолчанию на всех страницах будет 5 элементов
+
+    # 'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.LimitOffsetPagination',
+    # 'PAGE_SIZE': 10,  # Здесь PAGE_SIZE работает как 'default_limit'
+
+    # Указываем полный путь к нашему классу!
+    # 'DEFAULT_PAGINATION_CLASS': 'config.paginations.CustomCursorPagination',
+    # 'PAGE_SIZE': 5,
+
+    # аутентификация - ввод логина и пароля
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        # 'rest_framework.authentication.TokenAuthentication',
+        # 'rest_framework.authentication.SessionAuthentication',
+        # 'rest_framework.authentication.BasicAuthentication',
+    ],
+
+    # авторизация - после аутентификации, разрешение, что можно
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ],
+}
+
+
+SIMPLE_JWT = {
+    # Время жизни access токена (короткое)
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
+    # Время жизни refresh токена (длинное)
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
+    # Включаем ротацию refresh токенов для повышения безопасности
+    'ROTATE_REFRESH_TOKENS': True,
+    # Добавляем старый refresh токен в черный список после его использования
+    'BLACKLIST_AFTER_ROTATION': True,
+    # Указываем тип заголовка авторизации
+    'AUTH_HEADER_TYPES': ('Bearer',),
+    'TOKEN_OBTAIN_SERIALIZER': 'users.serializers.jwt.MyTokenObtainPairSerializer',
+}
