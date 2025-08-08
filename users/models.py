@@ -21,13 +21,22 @@ class UserProfile(models.Model):
     role = models.CharField(
         max_length=20,
         choices=UserRole.choices,
-        default=UserRole.GUEST,
-        help_text='User role: tenant, landlord, admin or guest'
+        default=UserRole.TENANT,
+        help_text='User role: tenant, landlord, or admin'
     )
+    is_verified = models.BooleanField(default=False, help_text="Пройден ли KYC/верификация")  # Для продакшена нужно
+                                                                    # default=False. Админ или автоматический скрипт
+                                                                    # устанавливает is_verified=True после проверки.
 
     def __str__(self) -> str:
         user: User = self.user  # type: ignore
         return f"{self.user.username} — {self.get_role_display()}"
+
+    def save(self, *args, **kwargs):
+        # если верификация пройдена — роль в любом случае становится LANDLORD
+        if self.is_verified and self.role != UserRole.LANDLORD:
+            self.role = UserRole.LANDLORD
+        super().save(*args, **kwargs)
 
     class Meta:
         verbose_name = 'User Profile'

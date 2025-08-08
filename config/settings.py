@@ -62,6 +62,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'config.middleware.JWTAuthenticationMiddleware',
 ]
 
 ROOT_URLCONF = 'config.urls'
@@ -165,16 +166,16 @@ REST_FRAMEWORK = {
         # 'rest_framework.authentication.BasicAuthentication',
     ],
 
-    # авторизация - после аутентификации, разрешение, что можно
+    # авторизация - после аутентификации, разрешение, что можно юзеру
     'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.IsAuthenticated',
+        'rest_framework.permissions.IsAuthenticatedOrReadOnly',
     ],
 }
 
 
 SIMPLE_JWT = {
     # Время жизни access токена (короткое)
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=5),
     # Время жизни refresh токена (длинное)
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
     # Включаем ротацию refresh токенов для повышения безопасности

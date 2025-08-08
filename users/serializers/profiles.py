@@ -1,58 +1,16 @@
-from django.contrib.auth.models import User
-from users.models import UserProfile, Tenant, Landlord
+from users.models import Tenant, Landlord
 from bookings.serializers import BookingSerializer
 from listings.serializers import ListingSerializer
 from rest_framework import serializers
-from .base_registration import BaseUserRegisterSerializer
-from users.choices import UserRole
-
-
-class GuestSerializer(serializers.ModelSerializer):
-    role = serializers.CharField(source='profile.role', read_only=True)
-
-    class Meta:
-        model = User
-        fields = ('id', 'username', 'email', 'role')
-        read_only_fields = fields
-
-
-
-
-
-
-class UserProfileSerializer(serializers.ModelSerializer):
-    # hidden-поле, автоматически берёт request.user
-    user = serializers.HiddenField(
-        default=serializers.CurrentUserDefault()
-    )
-
-    class Meta:
-        model = UserProfile
-        fields = ('role', 'user')
-        read_only_fields = ('user',)   # ('user',) - прописываем как кортеж, так как это итерируемый объект
-
-
-class UserSerializer(serializers.ModelSerializer):
-    profile = UserProfileSerializer(read_only=True)   # read_only=True у вложенного поля защищает его от
-                                                      # непреднамеренного изменения через этот сериализатор
-    class Meta:
-        model = User
-        fields = (
-            'id',
-            'username',
-            'email',
-            'first_name',
-            'last_name',
-            'profile',
-        )
 
 
 # TenantSerializer даёт более явную и ограниченную модель данных для конкретного кейса
 class TenantSerializer(serializers.ModelSerializer):
     username = serializers.CharField(source='user.username', read_only=True)  # source= - источник, от куда
-    email = serializers.EmailField(source='user.email', read_only=True)       # берем данные
-    current_bookings = serializers.SerializerMethodField()       # SerializerMethodField() - позволяет сериализировать
-                                                                 # методы хронящиеся в моделях
+    email = serializers.EmailField(source='user.email', read_only=True)  # берем данные
+    current_bookings = serializers.SerializerMethodField()  # SerializerMethodField() - позволяет сериализировать
+                                                            # методы хронящиеся в моделях
+
     class Meta:
         model = Tenant
         fields = ('id', 'username', 'email', 'current_bookings')
