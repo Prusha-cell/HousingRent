@@ -22,5 +22,7 @@ class ListingSerializer(serializers.ModelSerializer):
             'housing_type',
             'status',
             'landlord',
+            'created_at',
+            'views_count',
         )
         read_only_fields = ('created_at', 'views_count')

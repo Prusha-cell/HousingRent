@@ -3,6 +3,8 @@ from .models import SearchHistory, ListingView
 
 
 class SearchHistorySerializer(serializers.ModelSerializer):
+    user = serializers.HiddenField(default=serializers.CurrentUserDefault())
+
     class Meta:
         model = SearchHistory
         fields = ('id', 'user', 'keyword', 'searched_at')
@@ -10,6 +12,8 @@ class SearchHistorySerializer(serializers.ModelSerializer):
 
 
 class ListingViewSerializer(serializers.ModelSerializer):
+    user = serializers.HiddenField(default=serializers.CurrentUserDefault())
+
     class Meta:
         model = ListingView
         fields = ('id', 'user', 'listing', 'viewed_at')

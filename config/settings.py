@@ -49,7 +49,7 @@ INSTALLED_APPS = [
     'bookings',
     'listings',
     'reviews',
-    'analytics',
+    'analytics.apps.AnalyticsConfig',
     'rest_framework',
     'rest_framework_simplejwt.token_blacklist',
 ]

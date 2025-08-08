@@ -13,15 +13,11 @@ class SearchHistoryViewSet(viewsets.ModelViewSet):
     Поле user заполняется автоматически.
     """
     serializer_class = SearchHistorySerializer
-    # permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
         # Только записи текущего пользователя
         return SearchHistory.objects.filter(user=self.request.user)
-
-    def perform_create(self, serializer):
-        # Привязываем запись к текущему пользователю
-        serializer.save(user=self.request.user)
 
 
 class ListingViewViewSet(viewsets.ModelViewSet):
@@ -34,10 +30,7 @@ class ListingViewViewSet(viewsets.ModelViewSet):
     Поле user заполняется автоматически.
     """
     serializer_class = ListingViewSerializer
-    # permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
         return ListingView.objects.filter(user=self.request.user)
-
-    def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
