@@ -32,3 +32,9 @@ class Review(models.Model):
         verbose_name = 'Review'
         verbose_name_plural = 'Reviews'
         ordering = ['-created_at']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['listing', 'tenant'],
+                name='uniq_review_per_tenant_per_listing'
+            )
+        ]

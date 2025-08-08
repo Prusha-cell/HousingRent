@@ -78,3 +78,17 @@ class IsBookingActorOrAdmin(permissions.BasePermission):
         if getattr(obj, "listing", None) and getattr(obj.listing, "landlord_id", None) == u.pk:
             return True
         return False
+
+
+class IsReviewOwnerOrAdmin(permissions.BasePermission):
+    def has_permission(self, request, view):
+        if request.method in permissions.SAFE_METHODS:
+            return True
+        return request.user and request.user.is_authenticated
+
+    def has_object_permission(self, request, view, obj):
+        if request.method in permissions.SAFE_METHODS:
+            return True
+        if request.user.is_staff or request.user.is_superuser:
+            return True
+        return obj.tenant_id == request.user.id

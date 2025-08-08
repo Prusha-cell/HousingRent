@@ -25,7 +25,7 @@ urlpatterns = [
     path('api/listings/', include('listings.urls')),
     path('api/bookings/', include('bookings.urls')),
     path('api/analytics/', include('analytics.urls')),
-    # path('api/reviews/', include('reviews.urls')),
+    path('api/reviews/', include('reviews.urls')),
     path('api/register/', UserRegisterView.as_view({'post': 'create'}), name='user-register'),
     path('api/login/', LoginView.as_view(), name='login'),
     path('api/logout/', LogoutView.as_view(), name='logout'),
