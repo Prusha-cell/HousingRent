@@ -11,7 +11,7 @@ from users.serializers.profiles import (
     TenantSerializer,
     LandlordSerializer,
 )
-from .serializers.admi_user import AdminUserWriteSerializer
+from .serializers.admin_user import AdminUserWriteSerializer
 from .serializers.registration_for_users import UserRegisterSerializer
 
 

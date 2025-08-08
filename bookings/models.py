@@ -34,3 +34,13 @@ class Booking(models.Model):
         verbose_name = 'Booking'
         verbose_name_plural = 'Bookings'
         ordering = ['-created_at']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['listing', 'start_date', 'end_date'],
+                name='uniq_booking_exact'
+            ),
+        ]
+        indexes = [
+            models.Index(fields=['listing', 'start_date']),
+            models.Index(fields=['listing', 'end_date']),
+        ]

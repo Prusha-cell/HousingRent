@@ -55,3 +55,26 @@ class IsLandlordOwnerOnly(permissions.BasePermission):
         if request.user.is_superuser:
             return True
         return obj.landlord_id == request.user.pk
+
+
+class IsBookingActorOrAdmin(permissions.BasePermission):
+    """
+    Доступ к объекту брони:
+    - админ: всё
+    - тот, кто забронировал (tenant)
+    - арендодатель этого listing (listing.landlord)
+    """
+
+    def has_permission(self, request, view):
+        # Любой залогиненный может работать с эндпоинтом (в т.ч. создавать)
+        return request.user and request.user.is_authenticated
+
+    def has_object_permission(self, request, view, obj):
+        u = request.user
+        if u.is_staff or u.is_superuser:
+            return True
+        if getattr(obj, "tenant_id", None) == u.pk:
+            return True
+        if getattr(obj, "listing", None) and getattr(obj.listing, "landlord_id", None) == u.pk:
+            return True
+        return False

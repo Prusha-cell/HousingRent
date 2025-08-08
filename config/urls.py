@@ -23,7 +23,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/users/', include('users.urls')),
     path('api/listings/', include('listings.urls')),
-    # path('api/bookings/', include('bookings.urls')),
+    path('api/bookings/', include('bookings.urls')),
     # path('api/analytics/', include('analytics.urls')),
     # path('api/reviews/', include('reviews.urls')),
     path('api/register/', UserRegisterView.as_view({'post': 'create'}), name='user-register'),
