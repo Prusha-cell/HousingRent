@@ -7,7 +7,7 @@ from utils.permissions import IsReviewOwnerOrAdmin
 
 class ReviewViewSet(viewsets.ModelViewSet):
     serializer_class = ReviewSerializer
-    queryset = Review.objects.select_related('listing', 'tenant').all()
+    queryset = Review.objects.select_related('listing', 'tenant', 'booking').all()
     permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsReviewOwnerOrAdmin]
 
 

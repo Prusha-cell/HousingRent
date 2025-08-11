@@ -1,5 +1,8 @@
 from django.db import models
 from django.contrib.auth.models import User
+from django.db.models import Q
+
+from bookings.models import Booking
 from listings.models import Listing
 from reviews.choices import ReviewRating
 
@@ -17,6 +20,11 @@ class Review(models.Model):
         related_name='reviews',
         help_text="Tenant who leaves the review"
     )
+    booking = models.ForeignKey(
+        Booking,
+        on_delete=models.PROTECT,
+        related_name='reviews',
+        help_text='One review per booking')
     rating = models.PositiveSmallIntegerField(
         choices=ReviewRating.choices,
         default=ReviewRating.THREE,
@@ -34,7 +42,7 @@ class Review(models.Model):
         ordering = ['-created_at']
         constraints = [
             models.UniqueConstraint(
-                fields=['listing', 'tenant'],
-                name='uniq_review_per_tenant_per_listing'
+                fields=['tenant', 'booking'],
+                name='one_review_per_booking',
             )
         ]

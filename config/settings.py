@@ -52,6 +52,7 @@ INSTALLED_APPS = [
     'analytics.apps.AnalyticsConfig',
     'rest_framework',
     'rest_framework_simplejwt.token_blacklist',
+    'django_filters',
 ]
 
 MIDDLEWARE = [
@@ -146,8 +147,13 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-
 REST_FRAMEWORK = {
+    'DEFAULT_FILTER_BACKENDS': [
+        'django_filters.rest_framework.DjangoFilterBackend',
+        'rest_framework.filters.SearchFilter',
+        'rest_framework.filters.OrderingFilter',
+    ],
+
     # 'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     # 'PAGE_SIZE': 5,  # Теперь по умолчанию на всех страницах будет 5 элементов
 
@@ -172,7 +178,6 @@ REST_FRAMEWORK = {
     ],
 }
 
-
 SIMPLE_JWT = {
     # Время жизни access токена (короткое)
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=5),
@@ -186,3 +191,6 @@ SIMPLE_JWT = {
     'AUTH_HEADER_TYPES': ('Bearer',),
     'TOKEN_OBTAIN_SERIALIZER': 'users.serializers.jwt.MyTokenObtainPairSerializer',
 }
+
+# за сколько дней до заезда арендатор может отменить бронь
+BOOKING_CANCEL_DEADLINE_DAYS = 1   # 0 — разрешить до дня заезда (исключая сам день)
