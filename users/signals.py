@@ -3,11 +3,10 @@ from django.dispatch import receiver
 from django.contrib.auth.models import User
 from .models import UserProfile
 
+
 @receiver(post_save, sender=User)
 def ensure_user_profile(sender, instance, created, **kwargs):
-    # Если профиль уже есть — ничего не делаем
-    if hasattr(instance, 'profile'):
-        return
-
-    # Иначе создаём
-    UserProfile.objects.create(user=instance)
+    # Профиль создаём ТОЛЬКО при первом создании пользователя.
+    # Если по каким-то причинам профиль уже создан — просто ничего не делаем.
+    if created:
+        UserProfile.objects.get_or_create(user=instance)

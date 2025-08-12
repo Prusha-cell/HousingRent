@@ -23,3 +23,5 @@ env/
 # macOS / Windows
 .DS_Store
 Thumbs.db
+
+htmlcov/

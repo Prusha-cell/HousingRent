@@ -25,36 +25,43 @@ class AdminUserWriteSerializer(serializers.ModelSerializer):
         read_only_fields = ('id',)
 
     def create(self, validated_data):
-        # отделяем вложенные данные профиля
-        profile_data = validated_data.pop('profile', {}) or {}
-        raw_password = validated_data.pop('password')
+        profile_data = validated_data.pop("profile", {}) or {}
+        raw_password = validated_data.pop("password")
 
-        # создаём пользователя + хешируем пароль
-        user = User(**validated_data)
-        user.set_password(raw_password)
-        user.save()
+        # 1) создаём пользователя
+        user = User.objects.create_user(password=raw_password, **validated_data)
 
-        # создаём/обновляем профиль с ролью (защита от дублей, если есть сигнал post_save)
-        role = profile_data.get('role', UserRole.TENANT)
-        UserProfile.objects.update_or_create(user=user, defaults={'role': role})
+        # 2) гарантируем, что профиль есть (сигнал мог уже создать)
+        profile, _ = UserProfile.objects.get_or_create(user=user)
+
+        # 3) если роль передали — обновим напрямую (без сигналов/ save())
+        role = profile_data.get("role")
+        if role:
+            UserProfile.objects.filter(pk=profile.pk).update(role=role)
+
+            # Сбросить кэш связанного объекта и перечитать из БД,
+            # чтобы user.profile отдавал уже обновлённую роль.
+            try:
+                del user.profile  # удаляем кэш обратной OneToOne-ссылки
+            except AttributeError:
+                pass
+            user.refresh_from_db()
 
         return user
 
     def update(self, instance, validated_data):
-        profile_data = validated_data.pop('profile', None)
-        raw_password = validated_data.pop('password', None)
+        profile_data = validated_data.pop("profile", None)
+        raw_password = validated_data.pop("password", None)
 
-        # обновляем обычные поля
-        for k, v in validated_data.items():
-            setattr(instance, k, v)
+        for attr, val in validated_data.items():
+            setattr(instance, attr, val)
 
         if raw_password:
             instance.set_password(raw_password)
         instance.save()
 
-        # при апдейте позволяем менять роль
         if profile_data is not None:
-            role = profile_data.get('role')
+            role = profile_data.get("role")
             if role:
                 instance.profile.role = role
                 instance.profile.save()

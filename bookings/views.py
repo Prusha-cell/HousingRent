@@ -39,7 +39,7 @@ class BookingViewSet(viewsets.ModelViewSet):
 
         # нельзя бронировать своё же объявление
         if listing.landlord_id == user.pk:
-            raise ValidationError("Нельзя бронировать собственное объявление.")
+            raise ValidationError({"detail": "Нельзя бронировать собственное объявление."})
 
         # защищаемся от гонок: транзакция + блокировка строки объявления
         # (на SQLite select_for_update — no-op; на MySQL/Postgres работает как надо)
@@ -84,8 +84,9 @@ class BookingViewSet(viewsets.ModelViewSet):
         if not (self._is_admin(user) or self._is_landlord_of(user, booking)):
             return Response({"detail": "Недостаточно прав."}, status=drf_status.HTTP_403_FORBIDDEN)
 
-        if booking.status in (BookingStatus.CANCELLED, BookingStatus.REJECTED):
-            return Response({"detail": f"Нельзя подтвердить бронь в статусе {booking.status}."},
+        # подтверждать можно только pending
+        if booking.status != BookingStatus.PENDING:
+            return Response({"detail": "Подтвердить можно только бронь со статусом pending."},
                             status=drf_status.HTTP_400_BAD_REQUEST)
         if booking.status == BookingStatus.CONFIRMED:
             return Response({"detail": "Бронь уже подтверждена."}, status=drf_status.HTTP_400_BAD_REQUEST)
@@ -112,8 +113,9 @@ class BookingViewSet(viewsets.ModelViewSet):
         if not (self._is_admin(user) or self._is_landlord_of(user, booking)):
             return Response({"detail": "Недостаточно прав."}, status=drf_status.HTTP_403_FORBIDDEN)
 
-        if booking.status in (BookingStatus.CANCELLED, BookingStatus.REJECTED):
-            return Response({"detail": f"Бронь уже в статусе {booking.status}."},
+        # отклонять можно только pending (а не confirmed/cancelled и т.п.)
+        if booking.status != BookingStatus.PENDING:
+            return Response({"detail": "Отклонить можно только бронь со статусом pending."},
                             status=drf_status.HTTP_400_BAD_REQUEST)
 
         booking.status = BookingStatus.REJECTED
