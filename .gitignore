@@ -1,27 +1,89 @@
-# Byte-compiled / optimized / DLL files
+# -----------------------------
+# Python / Django
+# -----------------------------
 __pycache__/
 *.py[cod]
 *$py.class
+*.so
 
-# Virtual environments
+# Virtual envs
+.venv/
 venv/
 env/
-.venv/
+ENV/
+.venv*/
+pip-wheel-metadata/
 
-# Django stuff:
+# Django runtime
 *.sqlite3
+*.sqlite3-journal
 *.log
-/staticfiles/
-/media/
+media/
+staticfiles/
+# Если STATIC_ROOT называется иначе, добавь его сюда:
+# static_root/
 
-# PyCharm
+# -----------------------------
+# Тесты / покрытие
+# -----------------------------
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+junit.xml
+
+# -----------------------------
+# Env-файлы
+# -----------------------------
+.env
+.env.*
+!.env.example
+!.env.sample
+!.env.template
+
+# -----------------------------
+# IDE / редакторы
+# -----------------------------
 .idea/
+.vscode/
+*.code-workspace
 
-# Environment variables
-*.env
+# -----------------------------
+# Type checkers / линтеры
+# -----------------------------
+.mypy_cache/
+.pytype/
+.pyre/
+.ruff_cache/
 
-# macOS / Windows
+# -----------------------------
+# Packaging / build
+# -----------------------------
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# -----------------------------
+# Node (если появится фронт)
+# -----------------------------
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# -----------------------------
+# OS-мусор
+# -----------------------------
 .DS_Store
 Thumbs.db
+Desktop.ini
 
-htmlcov/
+# -----------------------------
+# Временные/резервные файлы
+# -----------------------------
+*.bak
+*.swp
+*.swo
+*~

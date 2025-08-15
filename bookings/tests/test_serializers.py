@@ -16,7 +16,7 @@ def test_serializer_valid_ok(user_with_profile):
     d2 = d1 + timedelta(days=2)
 
     ser = BookingSerializer(data={"listing": listing.id, "start_date": d1, "end_date": d2})
-    ser.is_valid(raise_exception=True)  # не должно упасть
+    ser.is_valid(raise_exception=True)  # should not raise
 
 
 @pytest.mark.django_db
@@ -30,7 +30,9 @@ def test_serializer_reject_unavailable_listing(user_with_profile):
 
     ser = BookingSerializer(data={"listing": listing.id, "start_date": d1, "end_date": d2})
     assert not ser.is_valid()
-    assert "недоступно" in str(ser.errors).lower()
+    # error message should indicate the listing is unavailable
+    err_text = str(ser.errors).lower()
+    assert ("unavailable" in err_text) or ("not available" in err_text)
 
 
 @pytest.mark.django_db
@@ -41,22 +43,27 @@ def test_serializer_dates_and_overlap(user_with_profile):
     listing = baker.make("listings.Listing", landlord=landlord, status=ListingStatus.AVAILABLE)
 
     today = date.today()
-    # прошлая дата — ошибка
+
+    # past start date -> invalid
     ser_bad_past = BookingSerializer(
-        data={"listing": listing.id, "start_date": today - timedelta(days=1), "end_date": today + timedelta(days=2)})
+        data={"listing": listing.id, "start_date": today - timedelta(days=1), "end_date": today + timedelta(days=2)}
+    )
     assert not ser_bad_past.is_valid()
 
-    # start >= end — ошибка
+    # start >= end -> invalid
     d = today + timedelta(days=7)
     ser_bad_order = BookingSerializer(data={"listing": listing.id, "start_date": d, "end_date": d})
     assert not ser_bad_order.is_valid()
 
-    # валидная бронь
+    # valid reference booking
     a1 = today + timedelta(days=10)
     a2 = a1 + timedelta(days=3)
-    b1 = Booking.objects.create(listing=listing, tenant=tenant1, start_date=a1, end_date=a2, status="confirmed")
+    b1 = Booking.objects.create(
+        listing=listing, tenant=tenant1, start_date=a1, end_date=a2, status="confirmed"
+    )
 
-    # пересечение — ошибка
+    # overlapping dates -> invalid
     ser_overlap = BookingSerializer(
-        data={"listing": listing.id, "start_date": a1 + timedelta(days=1), "end_date": a2 + timedelta(days=1)})
+        data={"listing": listing.id, "start_date": a1 + timedelta(days=1), "end_date": a2 + timedelta(days=1)}
+    )
     assert not ser_overlap.is_valid()

@@ -4,7 +4,7 @@ from .models import Review
 
 @admin.register(Review)
 class ReviewAdmin(admin.ModelAdmin):
-    # Колонки в списке отзывов
+    # Columns in the reviews list
     list_display = (
         'listing',
         'tenant',
@@ -12,27 +12,26 @@ class ReviewAdmin(admin.ModelAdmin):
         'short_comment',
         'created_at',
     )
-    # Фильтры в правой панели
+    # Filters in the right sidebar
     list_filter = (
         'rating',
         'created_at',
         'listing__location_city',
     )
-    # Поиск по полям и связям
+    # Search by fields and related fields
     search_fields = (
         'tenant__username',
         'listing__title',
         'comment',
     )
-    # Поля, доступные только для чтения
+    # Read-only fields in the form
     readonly_fields = (
         'created_at',
     )
 
     def short_comment(self, obj):
-        # укоротим длинный комментарий в списке
-        short = obj.comment[:50] + ('…' if len(obj.comment) > 50 else '')
-        return short
+        """Trim long comments in the changelist table."""
+        text = obj.comment or ""
+        return text[:50] + ('…' if len(text) > 50 else '')
 
-    short_comment.short_description = 'Comment'  # short_description задаёт, как именно эта колонка будет называться
-                                                 # в таблице отзывов в Django Admin
+    short_comment.short_description = 'Comment'

@@ -11,9 +11,9 @@ from users.serializers.admin_user import AdminUserWriteSerializer
 
 @pytest.mark.django_db
 def test_tenant_serializer_basic(user_with_profile):
-    # создаём юзера с ролью tenant
+    # create a user with the tenant role
     user = user_with_profile(username="ten", role="tenant", email="ten@ex.com")
-    # прокси Tenant указывает на того же юзера (по pk)
+    # the Tenant proxy points to the same user (by pk)
     tenant = Tenant.objects.get(pk=user.pk)
 
     ser = TenantSerializer(tenant)
@@ -21,14 +21,14 @@ def test_tenant_serializer_basic(user_with_profile):
 
     assert data["username"] == "ten"
     assert data["email"] == "ten@ex.com"
-    # пока без броней — должен быть пустой список
+    # no bookings yet — should be an empty list
     assert isinstance(data.get("current_bookings"), list)
     assert data["current_bookings"] == []
 
 
 @pytest.mark.django_db
 def test_landlord_serializer_basic(user_with_profile):
-    # создаём юзера с ролью landlord
+    # create a user with the landlord role
     user = user_with_profile(username="ll", role="landlord", email="ll@ex.com")
     landlord = Landlord.objects.get(pk=user.pk)
 
@@ -37,7 +37,7 @@ def test_landlord_serializer_basic(user_with_profile):
 
     assert data["username"] == "ll"
     assert data["email"] == "ll@ex.com"
-    # без активных листингов — пустой список
+    # no active listings yet — should be an empty list
     assert isinstance(data.get("active_listings"), list)
     assert data["active_listings"] == []
 
@@ -45,11 +45,11 @@ def test_landlord_serializer_basic(user_with_profile):
 @pytest.mark.django_db
 def test_landlord_serializer_after_admin_create():
     """
-    Интеграционный тест: создаём пользователя через AdminUserWriteSerializer с profile.role='landlord'.
-    Проверяем, что:
-      1) пароль захеширован,
-      2) профиль создан и роль записана,
-      3) прокси Landlord доступен и сериализация работает.
+    Integration test: create a user via AdminUserWriteSerializer with profile.role='landlord'.
+    Verify that:
+      1) the password is hashed,
+      2) the profile is created and the role is stored,
+      3) the Landlord proxy works and can be serialized.
     """
     payload = {
         "username": "from_admin",
@@ -65,17 +65,17 @@ def test_landlord_serializer_after_admin_create():
     assert ser.is_valid(), ser.errors
     user = ser.save()
 
-    # пароль задан
+    # password is set
     assert isinstance(user, User)
     assert user.check_password("fromadmin123")
 
-    # роль обновлялась через прямой update() -> освежим из БД и перечитаем профиль
+    # role was updated via direct update() -> refresh from DB and re-read profile
     user.refresh_from_db()
-    # убедимся, что профиль есть и роль верная
+    # ensure profile exists and has the correct role
     profile = UserProfile.objects.get(user=user)
     assert profile.role == "landlord"
 
-    # прокси-модель должна «увидеть» этого юзера
+    # the proxy model should “see” this user
     landlord = Landlord.objects.get(pk=user.pk)
 
     ser2 = LandlordSerializer(landlord)
@@ -91,7 +91,7 @@ def test_tenant_serializer_current_bookings_populated(user_with_profile):
     tenant_user = user_with_profile(username="tenant1", role="tenant", email="t1@ex.com")
     landlord_user = user_with_profile(username="landlord1", role="landlord", email="l1@ex.com")
 
-    # listing у landlord
+    # a listing owned by landlord
     listing = baker.make(
         "listings.Listing",
         landlord=landlord_user,
@@ -105,7 +105,7 @@ def test_tenant_serializer_current_bookings_populated(user_with_profile):
         status="available",
     )
 
-    # «текущее» бронирование у tenant (чтобы точно попало в выборку)
+    # a “current” booking for the tenant (ensure it falls into the selection)
     baker.make(
         "bookings.Booking",
         listing=listing,
@@ -118,11 +118,11 @@ def test_tenant_serializer_current_bookings_populated(user_with_profile):
     tenant = Tenant.objects.get(pk=tenant_user.pk)
     data = TenantSerializer(tenant).data
 
-    # базовые поля
+    # base fields
     assert data["username"] == "tenant1"
     assert data["email"] == "t1@ex.com"
 
-    # проверяем, что список бронирований непустой
+    # check that current_bookings is non-empty
     assert isinstance(data.get("current_bookings"), list)
     assert len(data["current_bookings"]) == 1
 
@@ -131,7 +131,7 @@ def test_tenant_serializer_current_bookings_populated(user_with_profile):
 def test_landlord_serializer_active_listings_populated(user_with_profile):
     landlord_user = user_with_profile(username="landlord2", role="landlord", email="l2@ex.com")
 
-    # два листинга: доступный и недоступный
+    # two listings: one available and one unavailable
     baker.make(
         "listings.Listing",
         landlord=landlord_user,
@@ -160,10 +160,10 @@ def test_landlord_serializer_active_listings_populated(user_with_profile):
     landlord = Landlord.objects.get(pk=landlord_user.pk)
     data = LandlordSerializer(landlord).data
 
-    # базовые поля
+    # base fields
     assert data["username"] == "landlord2"
     assert data["email"] == "l2@ex.com"
 
-    # ожидаем, что вернутся только «активные» листинги
+    # expect only “active” listings to be returned
     assert isinstance(data.get("active_listings"), list)
     assert len(data["active_listings"]) == 1

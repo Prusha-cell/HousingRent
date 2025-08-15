@@ -3,8 +3,8 @@ from model_bakery import baker
 from listings.models import Listing
 
 BASE = "/api/listings/"
-LIST_URL = f"{BASE}listings/"        # публичный read-only
-MY_URL   = f"{BASE}my-listings/"     # CRUD для владельца
+LIST_URL = f"{BASE}listings/"  # public read-only
+MY_URL = f"{BASE}my-listings/"  # CRUD for the owner
 
 
 @pytest.mark.django_db
@@ -12,12 +12,13 @@ def test_listings_list_anonymous_ok(api_client):
     baker.make("listings.Listing", status="available")
     resp = api_client.get(LIST_URL)
     assert resp.status_code == 200
-    assert isinstance(resp.json(), list)
+    data = resp.json()
+    assert isinstance(data["results"], list)
 
 
 @pytest.mark.django_db
 def test_listings_create_landlord_only(api_client, user_with_profile):
-    ll = user_with_profile(username="ll", role="landlord")  # verified не требуется по твоим пермишенам
+    ll = user_with_profile(username="ll", role="landlord")  # verification not required per your permissions
     api_client.force_authenticate(user=ll)
 
     payload = {
@@ -30,11 +31,11 @@ def test_listings_create_landlord_only(api_client, user_with_profile):
         "housing_type": "apartment",
         "status": "available",
     }
-    resp = api_client.post(MY_URL, payload, format="json")   # <— ВАЖНО: my-listings
+    resp = api_client.post(MY_URL, payload, format="json")  # IMPORTANT: use my-listings
     assert resp.status_code in (201, 200)
 
     obj_id = resp.json().get("id") or Listing.objects.latest("id").id
-    # владелец действительно текущий пользователь
+    # the owner should indeed be the current user
     listing_db = Listing.objects.get(id=obj_id)
     assert listing_db.landlord_id == ll.id
 
@@ -78,12 +79,12 @@ def test_listings_update_only_owner(api_client, user_with_profile):
 
     detail_my = f"{MY_URL}{listing.id}/"
 
-    # чужой — увидит 404 (его queryset не содержит этот объект)
+    # a non-owner should see 404 (their queryset doesn't include this object)
     api_client.force_authenticate(user=other)
     resp_forbidden = api_client.patch(detail_my, {"title": "Hacked"}, format="json")
     assert resp_forbidden.status_code == 404
 
-    # владелец — можно
+    # the owner can update
     api_client.force_authenticate(user=owner)
     resp_ok = api_client.patch(detail_my, {"title": "New title"}, format="json")
     assert resp_ok.status_code in (200, 202)

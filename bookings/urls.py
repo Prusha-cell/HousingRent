@@ -7,5 +7,5 @@ router = DefaultRouter()
 router.register(r'', BookingViewSet, basename='booking')
 
 urlpatterns = [
-    path('', include(router.urls)),   # означает «возьми все сгенерированные router-ом пути и прикрути их здесь,
-]                                     # на текущий базовый URL модуля»
+    path('', include(router.urls)),
+]

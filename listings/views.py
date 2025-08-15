@@ -15,33 +15,33 @@ from utils.permissions import IsLandlordOrReadOnly, IsLandlordOwnerOnly
 
 class ListingViewSet(viewsets.ReadOnlyModelViewSet):
     """
-    Публичная выдача объявлений (только чтение):
-    - всем доступны GET/HEAD/OPTIONS;
-    - поиск по title/description/location_*;
-    - фильтры по полям + сортировка;
-    - логирование поисковых запросов в SearchHistory.
+    Public listings (read-only):
+    - Anyone can use GET/HEAD/OPTIONS.
+    - Search over title/description/location_*.
+    - Field filtering + ordering.
+    - Logs search queries to SearchHistory.
     """
-    queryset = Listing.objects.select_related('landlord').all()
+    queryset = Listing.objects.select_related("landlord").all()
     serializer_class = ListingSerializer
     permission_classes = [IsLandlordOrReadOnly]
 
-    # Фильтры/поиск/сортировка — видны в DRF Browsable API
+    # Filters/search/ordering — visible in DRF Browsable API
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_fields = {
-        'status': ['exact'],
-        'location_city': ['exact'],
-        'location_district': ['exact'],
-        'rooms': ['gte', 'lte'],
-        'housing_type': ['exact'],
-        'price': ['gte', 'lte'],
+        "status": ["exact"],
+        "location_city": ["exact"],
+        "location_district": ["exact"],
+        "rooms": ["gte", "lte"],
+        "housing_type": ["exact"],
+        "price": ["gte", "lte"],
     }
-    search_fields = ['title', 'description', 'location_city', 'location_district']
-    ordering_fields = ['created_at', 'price', 'views_count']
+    search_fields = ["title", "description", "location_city", "location_district"]
+    ordering_fields = ["created_at", "price", "views_count"]
 
     def retrieve(self, request, *args, **kwargs):
         instance = self.get_object()
 
-        # логируем просмотр один раз в сутки для каждого пользователя
+        # Log a single view per user per day
         if request.user.is_authenticated:
             today = timezone.localdate()
             already = ListingView.objects.filter(
@@ -49,49 +49,47 @@ class ListingViewSet(viewsets.ReadOnlyModelViewSet):
             ).exists()
             if not already:
                 ListingView.objects.create(user=request.user, listing=instance)
-                # инкрементим счётчик просмотров
+                # Increment the counter
                 Listing.objects.filter(pk=instance.pk).update(
-                    views_count=F('views_count') + 1
+                    views_count=F("views_count") + 1
                 )
 
         return super().retrieve(request, *args, **kwargs)
 
-    # Если хочешь показывать всем (включая анонимов) ТОЛЬКО доступные:
+    # If you want the public endpoint to show ONLY available listings:
     def get_queryset(self):
         return super().get_queryset().filter(status=ListingStatus.AVAILABLE)
 
     def list(self, request, *args, **kwargs):
         """
-        Логируем поиск, если пришли ?search=... или ?q=...
-        (SearchFilter использует параметр `search`).
+        Log searches if ?search=... or ?q=... is provided
+        (DRF's SearchFilter uses the `search` parameter).
         """
-        keyword = (request.query_params.get('search')
-                   or request.query_params.get('q') or '').strip()
+        keyword = (request.query_params.get("search") or request.query_params.get("q") or "").strip()
         if keyword:
             SearchHistory.objects.create(
                 user=request.user if request.user.is_authenticated else None,
-                keyword=keyword
+                keyword=keyword,
             )
         return super().list(request, *args, **kwargs)
 
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=["get"])
     def search(self, request):
         """
-        Альтернативный эндпоинт: /api/listings/search/?q=...
-        Работает вместе со стандартными фильтрами (?status=..., ?ordering=... и т.д.).
-        Появится кнопкой "GET" в Extra actions в браузабле.
+        Alternative endpoint: /api/listings/search/?q=...
+        Works together with standard filters (?status=..., ?ordering=..., ?search=...).
+        Will appear as a "GET" button in Extra actions in the browsable API.
         """
-        q = (request.query_params.get('q') or '').strip()
+        q = (request.query_params.get("q") or "").strip()
 
-        # применяем ВСЕ стандартные фильтры/поиск/сортировку,
-        # чтобы работали ?status=..., ?ordering=..., ?search=...
+        # Apply ALL standard filters/search/ordering so ?status=..., ?ordering=..., ?search=... keep working
         qs = self.filter_queryset(self.get_queryset())
 
         if q:
             qs = qs.filter(Q(title__icontains=q) | Q(description__icontains=q))
             SearchHistory.objects.create(
                 user=request.user if request.user.is_authenticated else None,
-                keyword=q
+                keyword=q,
             )
 
         page = self.paginate_queryset(qs)
@@ -110,5 +108,5 @@ class MyListingViewSet(viewsets.ModelViewSet):
         user = self.request.user
         if user.is_superuser:
             return Listing.objects.all()
-        # критично: оставляем в queryset только свои объявления
+        # Critical: only expose the current user's own listings
         return Listing.objects.filter(landlord_id=user.pk)

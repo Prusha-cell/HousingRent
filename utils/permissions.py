@@ -4,12 +4,13 @@ from users.choices import UserRole
 
 class IsLandlordOrReadOnly(permissions.BasePermission):
     """
-    SAFE_METHODS (GET, HEAD, OPTIONS) — всем разрешено,
-    POST/PUT/PATCH/DELETE — только суперюзерам или владельцам-арендодателям.
+    SAFE_METHODS (GET, HEAD, OPTIONS) — allowed to everyone.
+    POST/PUT/PATCH/DELETE — only for superusers or users with the landlord role.
+    Object-level writes are allowed only for the owner (listing.landlord).
     """
 
     def _is_safe_or_superuser(self, request):
-        # Разрешаем чтение и админам любые операции
+        # Allow read-only and let superusers do anything
         if request.method in permissions.SAFE_METHODS:
             return True
         if request.user.is_superuser:
@@ -17,32 +18,39 @@ class IsLandlordOrReadOnly(permissions.BasePermission):
         return False
 
     def has_permission(self, request, view):
-        # 1) Если это чтение, сразу разрешаем
+        # 1) Allow all safe (read-only) requests
         if request.method in permissions.SAFE_METHODS:
             return True
 
-        # 2) Для записи пользователь должен быть аутентифицирован
+        # 2) For write operations the user must be authenticated
         if not request.user.is_authenticated:
             return False
 
-        # 3) Админ (superuser) может всё
+        # 3) Superuser can do everything
         if request.user.is_superuser:
             return True
 
-        # 4) В противном случае — только арендодатель
+        # 4) Otherwise only a landlord can write
         profile = getattr(request.user, 'profile', None)
         return bool(profile and profile.role == UserRole.LANDLORD)
 
     def has_object_permission(self, request, view, obj):
-        # 1) Чтение и админы — всегда разрешено
+        # 1) Read-only and superusers — always allowed
         if self._is_safe_or_superuser(request):
             return True
 
-        # 2) Для записи — только если это объявление этого же арендодателя
+        # 2) For writes — only if the object belongs to the same landlord
         return obj.landlord_id == request.user.pk
 
 
 class IsLandlordOwnerOnly(permissions.BasePermission):
+    """
+    For the “my listings” endpoints:
+    - User must be authenticated.
+    - Superusers are allowed to access everything.
+    - Otherwise only landlords can access.
+    - Object-level access is limited to the owner (listing.landlord).
+    """
     def has_permission(self, request, view):
         if not request.user.is_authenticated:
             return False
@@ -59,14 +67,14 @@ class IsLandlordOwnerOnly(permissions.BasePermission):
 
 class IsBookingActorOrAdmin(permissions.BasePermission):
     """
-    Доступ к объекту брони:
-    - админ: всё
-    - тот, кто забронировал (tenant)
-    - арендодатель этого listing (listing.landlord)
+    Access to a booking object is allowed for:
+    - Admins/staff
+    - The tenant who made the booking
+    - The landlord of the related listing (booking.listing.landlord)
     """
 
     def has_permission(self, request, view):
-        # Любой залогиненный может работать с эндпоинтом (в т.ч. создавать)
+        # Any authenticated user may access the endpoint (including create)
         return request.user and request.user.is_authenticated
 
     def has_object_permission(self, request, view, obj):
@@ -81,6 +89,12 @@ class IsBookingActorOrAdmin(permissions.BasePermission):
 
 
 class IsReviewOwnerOrAdmin(permissions.BasePermission):
+    """
+    Reviews:
+    - SAFE_METHODS are allowed to everyone.
+    - Writes require authentication.
+    - Object-level writes allowed to admins or the review owner (tenant).
+    """
     def has_permission(self, request, view):
         if request.method in permissions.SAFE_METHODS:
             return True

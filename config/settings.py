@@ -16,181 +16,169 @@ import environ
 
 env = environ.Env(
     DEBUG=(bool, False),
-    USE_MYSQL=(bool, False)
+    USE_MYSQL=(bool, False),
 )
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Take environment variables from .env file
-environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
+# Load environment variables from .env
+environ.Env.read_env(os.path.join(BASE_DIR, ".env"))
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = env('SECRET_KEY')
+SECRET_KEY = env("SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = env('DEBUG')
+DEBUG = env("DEBUG")
 
-ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=[])
+ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=[])
 
 # Application definition
-
 INSTALLED_APPS = [
-    'django.contrib.admin',
-    'django.contrib.auth',
-    'django.contrib.contenttypes',
-    'django.contrib.sessions',
-    'django.contrib.messages',
-    'django.contrib.staticfiles',
-    'users.apps.UsersConfig',
-    'bookings',
-    'listings',
-    'reviews',
-    'analytics.apps.AnalyticsConfig',
-    'rest_framework',
-    'rest_framework_simplejwt.token_blacklist',
-    'django_filters',
+    "django.contrib.admin",
+    "django.contrib.auth",
+    "django.contrib.contenttypes",
+    "django.contrib.sessions",
+    "django.contrib.messages",
+    "django.contrib.staticfiles",
+
+    "users.apps.UsersConfig",
+    "bookings",
+    "listings",
+    "reviews",
+    "analytics.apps.AnalyticsConfig",
+
+    "rest_framework",
+    "rest_framework_simplejwt.token_blacklist",
+    "django_filters",
 ]
 
 MIDDLEWARE = [
-    'django.middleware.security.SecurityMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware',
-    'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'django.contrib.messages.middleware.MessageMiddleware',
-    'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'config.middleware.JWTAuthenticationMiddleware',
+    "django.middleware.security.SecurityMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",
+    "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "config.middleware.JWTAuthenticationMiddleware",
 ]
 
-ROOT_URLCONF = 'config.urls'
+ROOT_URLCONF = "config.urls"
 
 TEMPLATES = [
     {
-        'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
-        'APP_DIRS': True,
-        'OPTIONS': {
-            'context_processors': [
-                'django.template.context_processors.request',
-                'django.contrib.auth.context_processors.auth',
-                'django.contrib.messages.context_processors.messages',
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "DIRS": [],
+        "APP_DIRS": True,
+        "OPTIONS": {
+            "context_processors": [
+                "django.template.context_processors.request",
+                "django.contrib.auth.context_processors.auth",
+                "django.contrib.messages.context_processors.messages",
             ],
         },
     },
 ]
 
-WSGI_APPLICATION = 'config.wsgi.application'
+WSGI_APPLICATION = "config.wsgi.application"
 
 # Database
-# https://docs.djangoproject.com/en/5.2/ref/settings/#databases
-
-# choose between SQLite and MySQL
+# Choose between SQLite and MySQL via USE_MYSQL env var
 if env.bool("USE_MYSQL"):
     DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.mysql',
-            'NAME': env("MYSQL_NAME"),
-            'USER': env("MYSQL_USER"),
-            'PASSWORD': env("MYSQL_PASSWORD"),
-            'HOST': env("MYSQL_HOST"),
-            'PORT': env("MYSQL_PORT"),
+        "default": {
+            "ENGINE": "django.db.backends.mysql",
+            "NAME": env("MYSQL_NAME"),
+            "USER": env("MYSQL_USER"),
+            "PASSWORD": env("MYSQL_PASSWORD"),
+            "HOST": env("MYSQL_HOST"),
+            "PORT": env("MYSQL_PORT"),
         }
     }
 else:
     DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / "db.sqlite3",
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
         }
     }
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
-
 AUTH_PASSWORD_VALIDATORS = [
-    {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
-    },
+    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
+    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
+    {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
+    {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
 
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
-
-LANGUAGE_CODE = 'en-us'
-
-TIME_ZONE = 'Europe/Berlin'
-
+LANGUAGE_CODE = "en-us"
+TIME_ZONE = "Europe/Berlin"
 USE_I18N = True
-
 USE_TZ = True
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
-
-STATIC_URL = 'static/'
+STATIC_URL = "static/"
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
-
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 REST_FRAMEWORK = {
-    'DEFAULT_FILTER_BACKENDS': [
-        'django_filters.rest_framework.DjangoFilterBackend',
-        'rest_framework.filters.SearchFilter',
-        'rest_framework.filters.OrderingFilter',
+    "EXCEPTION_HANDLER": "utils.exceptions.custom_exception_handler",
+
+    "DEFAULT_FILTER_BACKENDS": [
+        "django_filters.rest_framework.DjangoFilterBackend",
+        "rest_framework.filters.SearchFilter",
+        "rest_framework.filters.OrderingFilter",
     ],
 
-    # 'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-    # 'PAGE_SIZE': 5,  # Теперь по умолчанию на всех страницах будет 5 элементов
+    # You can enable one of the pagination styles below if needed:
+    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
+    "PAGE_SIZE": 5,  # Page size for PageNumberPagination
 
-    # 'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.LimitOffsetPagination',
-    # 'PAGE_SIZE': 10,  # Здесь PAGE_SIZE работает как 'default_limit'
+    # "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.LimitOffsetPagination",
+    # "PAGE_SIZE": 10,  # Acts as 'default_limit' for LimitOffsetPagination
 
-    # Указываем полный путь к нашему классу!
-    # 'DEFAULT_PAGINATION_CLASS': 'config.paginations.CustomCursorPagination',
-    # 'PAGE_SIZE': 5,
+    # Custom cursor pagination (use full dotted path):
+    # "DEFAULT_PAGINATION_CLASS": "config.paginations.CustomCursorPagination",
+    # "PAGE_SIZE": 5,
 
-    # аутентификация - ввод логина и пароля
-    'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
-        # 'rest_framework.authentication.TokenAuthentication',
-        # 'rest_framework.authentication.SessionAuthentication',
-        # 'rest_framework.authentication.BasicAuthentication',
+    # Authentication — how users prove their identity
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+        # "rest_framework.authentication.TokenAuthentication",
+        # "rest_framework.authentication.SessionAuthentication",
+        # "rest_framework.authentication.BasicAuthentication",
     ],
 
-    # авторизация - после аутентификации, разрешение, что можно юзеру
-    'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.IsAuthenticatedOrReadOnly',
+    # Authorization — what authenticated users are allowed to do
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.IsAuthenticatedOrReadOnly",
     ],
 }
 
 SIMPLE_JWT = {
-    # Время жизни access токена (короткое)
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=5),
-    # Время жизни refresh токена (длинное)
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
-    # Включаем ротацию refresh токенов для повышения безопасности
-    'ROTATE_REFRESH_TOKENS': True,
-    # Добавляем старый refresh токен в черный список после его использования
-    'BLACKLIST_AFTER_ROTATION': True,
-    # Указываем тип заголовка авторизации
-    'AUTH_HEADER_TYPES': ('Bearer',),
-    'TOKEN_OBTAIN_SERIALIZER': 'users.serializers.jwt.MyTokenObtainPairSerializer',
+    # Access token lifetime (short)
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=5),
+    # Refresh token lifetime (long)
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
+    # Enable refresh token rotation for better security
+    "ROTATE_REFRESH_TOKENS": True,
+    # Blacklist the old refresh token after rotation
+    "BLACKLIST_AFTER_ROTATION": True,
+    # Authorization header type
+    "AUTH_HEADER_TYPES": ("Bearer",),
+    "TOKEN_OBTAIN_SERIALIZER": "users.serializers.jwt.MyTokenObtainPairSerializer",
 }
 
-# за сколько дней до заезда арендатор может отменить бронь
-BOOKING_CANCEL_DEADLINE_DAYS = 1   # 0 — разрешить до дня заезда (исключая сам день)
+# How many days before check-in a tenant can cancel a booking.
+# Example: 1 => cancellation allowed strictly before 1 day prior to start_date (not on the check-in day).
+BOOKING_CANCEL_DEADLINE_DAYS = 1  # 0 => allow until the day before check-in (excluding the check-in day)

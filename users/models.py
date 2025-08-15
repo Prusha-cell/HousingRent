@@ -1,39 +1,40 @@
+from datetime import date
+
 from django.contrib.auth.models import User
 from django.db import models
 
 from bookings.choices import BookingStatus
 from listings.choices import ListingStatus
 from .choices import UserRole
-from datetime import date
 
 
-# UserProfile — хранилище для роли пользователя(User).
 class UserProfile(models.Model):
     """
-    User profile with additional fields.
-    Linked one-to-one with the base User model.
+    Stores additional fields for a user (role, verification, etc.).
+    One-to-one with the base Django `User` model.
     """
     user = models.OneToOneField(
         User,
         on_delete=models.CASCADE,
-        related_name='profile'
+        related_name='profile',
     )
     role = models.CharField(
         max_length=20,
         choices=UserRole.choices,
         default=UserRole.TENANT,
-        help_text='User role: tenant, landlord, or admin'
+        help_text='User role: tenant, landlord, or admin.',
     )
-    is_verified = models.BooleanField(default=False, help_text="Пройден ли KYC/верификация")  # Для продакшена нужно
-                                                                    # default=False. Админ или автоматический скрипт
-                                                                    # устанавливает is_verified=True после проверки.
+    is_verified = models.BooleanField(
+        default=False,
+        help_text="Whether KYC/verification has been passed. In production this should start as False; "
+                  "an admin or automated process sets it to True after verification."
+    )
 
     def __str__(self) -> str:
-        user: User = self.user  # type: ignore
         return f"{self.user.username} — {self.get_role_display()}"
 
     def save(self, *args, **kwargs):
-        # если верификация пройдена — роль в любом случае становится LANDLORD
+        # If the user is verified, force the role to LANDLORD.
         if self.is_verified and self.role != UserRole.LANDLORD:
             self.role = UserRole.LANDLORD
         super().save(*args, **kwargs)
@@ -43,44 +44,43 @@ class UserProfile(models.Model):
         verbose_name_plural = 'User Profiles'
 
 
-# За счёт своего менеджера (TenantManager) ты работаешь уже не со всеми пользователями, а только с арендаторами.
 class TenantManager(models.Manager):
+    """Manager that limits the queryset to users with the TENANT role."""
     def get_queryset(self):
         return super().get_queryset().filter(profile__role=UserRole.TENANT)
 
 
 class Tenant(User):
     """
-    Создаёт прокси-модель на основе стандартного User, но только для тех пользователей,
-    у которых в профиле стоит роль «tenant»
+    Proxy model over Django's `User` limited to users whose profile role is TENANT.
+    No new table is created; this simply wraps the existing `auth_user` rows.
     """
     objects = TenantManager()
 
     class Meta:
-        proxy = True                     # proxy = True не делает новую таблицу, а просто «оборачивает»
-        verbose_name = 'Tenant'          # существующую. Все поля (username, email и т.д.) и поведения User остаются,
-        verbose_name_plural = 'Tenants'  # но мы можем добавлять своё.
+        proxy = True
+        verbose_name = 'Tenant'
+        verbose_name_plural = 'Tenants'
 
     def get_current_bookings(self):
         """
-        Example method: returns confirmed bookings that have not ended as of today.
+        Return confirmed bookings that have not yet ended (as of today).
         """
         return self.bookings.filter(
             status=BookingStatus.CONFIRMED,
-            end_date__gte=date.today()
+            end_date__gte=date.today(),
         )
 
 
-# # фильтрует пользователя по роли LANDLORD.
 class LandlordManager(models.Manager):
+    """Manager that limits the queryset to users with the LANDLORD role."""
     def get_queryset(self):
         return super().get_queryset().filter(profile__role=UserRole.LANDLORD)
 
 
 class Landlord(User):
     """
-    Создаёт прокси-модель на основе стандартного User, но только для тех пользователей,
-    у которых в профиле стоит роль «landlord»
+    Proxy model over Django's `User` limited to users whose profile role is LANDLORD.
     """
     objects = LandlordManager()
 
@@ -91,6 +91,6 @@ class Landlord(User):
 
     def get_listings(self):
         """
-        Returns the landlord's active listings.
+        Return the landlord's active (AVAILABLE) listings.
         """
         return self.listings.filter(status=ListingStatus.AVAILABLE)

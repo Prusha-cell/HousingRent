@@ -1,59 +1,63 @@
+from django.conf import settings
 from django.db import transaction
 from django.db.models import Q
-from rest_framework import viewsets, permissions
-from rest_framework.exceptions import ValidationError
+from django.utils import timezone
 
+from rest_framework import viewsets, permissions, status as drf_status
+from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
+from rest_framework.response import Response
+
+from listings.models import Listing
+from .choices import BookingStatus
 from .models import Booking
 from .serializers import BookingSerializer
 from utils.permissions import IsBookingActorOrAdmin
-from listings.models import Listing
-
-from rest_framework.decorators import action
-from rest_framework.response import Response
-from rest_framework import status as drf_status
-from .choices import BookingStatus
-
-from django.conf import settings
-from django.utils import timezone
-import datetime
 
 
 class BookingViewSet(viewsets.ModelViewSet):
+    """
+    CRUD + actions for bookings.
+
+    Visibility (get_queryset):
+      - Admin/staff: all bookings.
+      - Regular user: own bookings OR bookings for listings they own (landlord).
+    """
     serializer_class = BookingSerializer
     permission_classes = [permissions.IsAuthenticated, IsBookingActorOrAdmin]
 
     def get_queryset(self):
-        u = self.request.user
+        user = self.request.user
         qs = Booking.objects.select_related("listing")
-        if u.is_staff or u.is_superuser:
+        if user.is_staff or user.is_superuser:
             return qs
-        # обычный пользователь/арендодатель видит свои брони
-        # И брони по своим объявлениям
+        # Non-admins: see (a) own bookings, (b) bookings for their listings
         return qs.filter(
-            Q(tenant_id=u.pk) | Q(listing__landlord_id=u.pk)
+            Q(tenant_id=user.pk) | Q(listing__landlord_id=user.pk)
         ).distinct()
 
     def perform_create(self, serializer):
         user = self.request.user
         listing = serializer.validated_data["listing"]
 
-        # нельзя бронировать своё же объявление
+        # A landlord cannot book their own listing
         if listing.landlord_id == user.pk:
-            raise ValidationError({"detail": "Нельзя бронировать собственное объявление."})
+            raise ValidationError({"detail": "You cannot book your own listing."})
 
-        # защищаемся от гонок: транзакция + блокировка строки объявления
-        # (на SQLite select_for_update — no-op; на MySQL/Postgres работает как надо)
+        # Concurrency guard: lock the listing row while saving the booking
+        # (SQLite: no-op; MySQL/Postgres: proper row-level lock)
         with transaction.atomic():
             Listing.objects.select_for_update().get(pk=listing.pk)
             serializer.save(tenant=user)
 
     def perform_update(self, serializer):
+        # Lock the related listing to avoid race conditions while updating
         with transaction.atomic():
             listing = serializer.validated_data.get("listing") or serializer.instance.listing
             Listing.objects.select_for_update().get(pk=listing.pk)
             serializer.save()
 
-        # --- helpers -------------------------------------------------------------
+    # ----------------- helpers -----------------
 
     def _is_admin(self, user):
         return user.is_staff or user.is_superuser
@@ -64,110 +68,116 @@ class BookingViewSet(viewsets.ModelViewSet):
     def _is_tenant_of(self, user, booking):
         return getattr(booking, "tenant_id", None) == user.pk
 
-        # --- actions -------------------------------------------------------------
+    # ----------------- actions -----------------
 
-    @action(detail=True, methods=['get', 'post'])
+    @action(detail=True, methods=["get", "post"])
     def confirm(self, request, pk=None):
         """
-        Подтвердить бронь — доступно лендлорду объявления и админам.
-        GET: подсказка. POST: меняет статус на CONFIRMED.
+        Confirm a booking — allowed for the listing's landlord or admins.
+        GET: hint message. POST: changes status to CONFIRMED.
         """
         booking = self.get_object()
         user = request.user
 
-        if request.method == 'GET':
+        if request.method == "GET":
             return Response({
-                "detail": "Используйте POST для подтверждения брони.",
-                "current_status": booking.status
+                "detail": "Use POST to confirm the booking.",
+                "current_status": booking.status,
             })
 
         if not (self._is_admin(user) or self._is_landlord_of(user, booking)):
-            return Response({"detail": "Недостаточно прав."}, status=drf_status.HTTP_403_FORBIDDEN)
+            return Response({"detail": "Insufficient permissions."}, status=drf_status.HTTP_403_FORBIDDEN)
 
-        # подтверждать можно только pending
+        # Only pending bookings can be confirmed
         if booking.status != BookingStatus.PENDING:
-            return Response({"detail": "Подтвердить можно только бронь со статусом pending."},
-                            status=drf_status.HTTP_400_BAD_REQUEST)
-        if booking.status == BookingStatus.CONFIRMED:
-            return Response({"detail": "Бронь уже подтверждена."}, status=drf_status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"detail": "Only bookings with status 'pending' can be confirmed."},
+                status=drf_status.HTTP_400_BAD_REQUEST,
+            )
 
         booking.status = BookingStatus.CONFIRMED
-        booking.save(update_fields=['status'])
-        return Response({"status": booking.status}, status=drf_status.HTTP_200_OK)
+        booking.save(update_fields=["status"])
+        return Response({"status": BookingStatus.CONFIRMED},
+                        status=drf_status.HTTP_200_OK)
+
+    @action(detail=True, methods=["post"])
+    def cancel(self, request, pk=None):
+        """
+        Cancel a booking.
+        Allowed for: admin/staff, tenant (owner of booking), or landlord of the listing.
+        """
+        booking = self.get_object()
+        user = request.user
+
+
+        is_admin = user.is_staff or user.is_superuser
+        is_tenant = getattr(booking, "tenant_id", None) == user.pk
+        is_landlord = getattr(booking.listing, "landlord_id", None) == user.pk
+        if not (is_admin or is_tenant or is_landlord):
+            return Response({"detail": "Insufficient permissions."}, status=drf_status.HTTP_403_FORBIDDEN)
+
+        # cannot be cancelled retroactively / after the start
+        today = timezone.localdate()
+        if booking.start_date <= today:
+            return Response({"detail": "Booking has already started; cannot cancel."},
+                            status=drf_status.HTTP_400_BAD_REQUEST)
+
+        # check the current status
+        if booking.status == BookingStatus.CANCELLED:
+            return Response({"detail": "Booking is already canceled."},
+                            status=drf_status.HTTP_400_BAD_REQUEST)
+
+        # (opt.) prohibition on cancellation of CONFIRMED by ordinary tenant:
+        if booking.status == BookingStatus.CONFIRMED and not (is_admin or is_landlord):
+            return Response({"detail": "Only landlord or admin can cancel a confirmed booking."},
+                            status=drf_status.HTTP_403_FORBIDDEN)
+
+        deadline = getattr(settings, "BOOKING_CANCEL_DEADLINE_DAYS", 0)
+        days_to_start = (booking.start_date - today).days
+        # We block if there are LESS than the deadline days left
+        if days_to_start < deadline:
+            return Response(
+                {"detail": f"Too late to cancel. Deadline is {deadline} day(s) before check-in."},
+                status=drf_status.HTTP_400_BAD_REQUEST,
+            )
+
+        booking.status = BookingStatus.CANCELLED
+        booking.save(update_fields=["status"])
+        return Response({"detail": "Booking canceled.", "status": booking.status})
 
     @action(detail=True, methods=['get', 'post'])
     def reject(self, request, pk=None):
         """
-        Отклонить бронь — доступно лендлорду объявления и админам.
-        GET: подсказка. POST: меняет статус на REJECTED.
+        Reject a booking — allowed for the listing's landlord or admins.
+        Only 'pending' bookings can be rejected.
+        GET: hint message. POST: changes status to REJECT.
         """
         booking = self.get_object()
         user = request.user
 
         if request.method == 'GET':
-            return Response({
-                "detail": "Используйте POST для отклонения брони.",
-                "current_status": booking.status
-            })
+            return Response({"detail": "Use POST to REJECT the booking.",
+                             "current_status": booking.status})
 
         if not (self._is_admin(user) or self._is_landlord_of(user, booking)):
-            return Response({"detail": "Недостаточно прав."}, status=drf_status.HTTP_403_FORBIDDEN)
+            return Response(
+                {'detail': 'Insufficient permissions.'},
+                status=drf_status.HTTP_403_FORBIDDEN
+            )
 
-        # отклонять можно только pending (а не confirmed/cancelled и т.п.)
         if booking.status != BookingStatus.PENDING:
-            return Response({"detail": "Отклонить можно только бронь со статусом pending."},
-                            status=drf_status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {
+                    'detail': 'Only bookings with status PENDING can be REJECTED.',
+                    'current_status': booking.status
+                },
+                status=drf_status.HTTP_400_BAD_REQUEST
+            )
 
         booking.status = BookingStatus.REJECTED
         booking.save(update_fields=['status'])
-        return Response({"status": booking.status}, status=drf_status.HTTP_200_OK)
 
-    @action(detail=True, methods=['get', 'post'])
-    def cancel(self, request, pk=None):
-        """
-        Отменить свою бронь — доступно арендатору этой брони и админам.
-        Дедлайн контролируется настройкой BOOKING_CANCEL_DEADLINE_DAYS.
-        GET: подсказка. POST: меняет статус на CANCELLED.
-        """
-        booking = self.get_object()
-        user = request.user
-
-        if request.method == 'GET':
-            return Response({
-                "detail": "Используйте POST для отмены брони.",
-                "current_status": booking.status
-            })
-
-        # доступ только арендатору этой брони или админу
-        if not (self._is_admin(user) or self._is_tenant_of(user, booking)):
-            return Response({"detail": "Недостаточно прав."}, status=drf_status.HTTP_403_FORBIDDEN)
-
-        # уже отменена/отклонена — дополнительные проверки
-        if booking.status == BookingStatus.CANCELLED:
-            return Response({"detail": "Бронь уже отменена."}, status=drf_status.HTTP_400_BAD_REQUEST)
-        if booking.status == BookingStatus.REJECTED:
-            return Response({"detail": "Бронь уже отклонена и не может быть отменена."},
-                            status=drf_status.HTTP_400_BAD_REQUEST)
-
-        # дедлайн: арендатор может отменить только до определённой даты
-        # (админ — всегда)
-        if not self._is_admin(user):
-            today = timezone.localdate()  # т.к. у нас даты (без времени)
-            deadline_days = getattr(settings, "BOOKING_CANCEL_DEADLINE_DAYS", 1)
-            deadline_date = booking.start_date - datetime.timedelta(days=deadline_days)
-
-            # запретить отмену в день заезда и позже
-            if today >= booking.start_date:
-                return Response(
-                    {"detail": "Нельзя отменить бронь в день заезда или позже."},
-                    status=drf_status.HTTP_400_BAD_REQUEST
-                )
-
-            # запретить, если позже дедлайна
-            if today > deadline_date:
-                msg = f"Отменить можно не позднее чем за {deadline_days} дн. до заезда (до {deadline_date})."
-                return Response({"detail": msg}, status=drf_status.HTTP_400_BAD_REQUEST)
-
-        booking.status = BookingStatus.CANCELLED
-        booking.save(update_fields=['status'])
-        return Response({"status": booking.status}, status=drf_status.HTTP_200_OK)
+        return Response(
+            {'detail': BookingStatus.REJECTED},
+            status=drf_status.HTTP_200_OK
+        )

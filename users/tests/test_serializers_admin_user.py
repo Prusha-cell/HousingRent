@@ -35,7 +35,7 @@ def test_admin_user_update_password_and_role(user_with_profile):
         "is_active": True,
         "is_staff": False,
         "password": "newpass123",  # write_only
-        "profile": {"role": "admin"},  # апдейтим роль
+        "profile": {"role": "admin"},
     }, partial=True)
     assert ser.is_valid(), ser.errors
     user = ser.save()

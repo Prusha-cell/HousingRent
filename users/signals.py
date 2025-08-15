@@ -6,7 +6,11 @@ from .models import UserProfile
 
 @receiver(post_save, sender=User)
 def ensure_user_profile(sender, instance, created, **kwargs):
-    # Профиль создаём ТОЛЬКО при первом создании пользователя.
-    # Если по каким-то причинам профиль уже создан — просто ничего не делаем.
+    """
+    Ensure a profile exists for every user.
+
+    Create a UserProfile only when the user is first created.
+    If a profile already exists for any reason, do nothing.
+    """
     if created:
         UserProfile.objects.get_or_create(user=instance)

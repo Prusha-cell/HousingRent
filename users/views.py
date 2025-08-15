@@ -16,52 +16,54 @@ from .serializers.registration_for_users import UserRegisterSerializer
 
 
 class AdminUserViewSet(viewsets.ModelViewSet):
-    queryset = User.objects.select_related('profile').all()  # select_related('profile') выполняет SQL-JOIN,
-    serializer_class = AdminUserWriteSerializer  # чтоб сразу отобразить все профили
+    # Preload related profile via JOIN so admin can see user+profile in one query
+    queryset = User.objects.select_related('profile').all()
+    serializer_class = AdminUserWriteSerializer
     permission_classes = [permissions.IsAdminUser]
 
 
-# Эндпоинт /api/tenants/ (работаем только с теми, у кого роль TENANT)
+# Endpoint /api/tenants/ — only users with TENANT role (via proxy model)
 class TenantViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Tenant.objects.all()
     serializer_class = TenantSerializer
     permission_classes = [IsAdminUser]
 
 
-# Эндпоинт /api/landlords/ (только для роли LANDLORD)
+# Endpoint /api/landlords/ — only users with LANDLORD role (via proxy model)
 class LandlordViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Landlord.objects.all()
     serializer_class = LandlordSerializer
     permission_classes = [IsAdminUser]
 
 
-class UserRegisterView(mixins.CreateModelMixin,
-                       viewsets.GenericViewSet):
+class UserRegisterView(mixins.CreateModelMixin, viewsets.GenericViewSet):
     """
     POST /api/users/register/
     """
-    queryset = User.objects.none()  # queryset = User.objects.none() — это просто заглушка,
-    serializer_class = UserRegisterSerializer  # чтобы DRF-захардкодил пустой набор для всех не-POST действий.
+    # Dummy queryset so DRF won’t expose list/retrieve by default for this ViewSet
+    queryset = User.objects.none()
+    serializer_class = UserRegisterSerializer
 
-    authentication_classes = []  # <— отключаем глобальные JWTAuth
-    permission_classes = [AllowAny]  # разрешаем любому пользователю регистрацию
+    # Disable global JWT auth for this endpoint
+    authentication_classes = []
+    permission_classes = [AllowAny]
 
 
 def set_jwt_cookies(response, user):
     """
-    Генерирует пару токенов для user и кладёт в response cookies.
+    Generate a token pair for the user and set them as HttpOnly cookies.
     """
     refresh = RefreshToken.for_user(user)
     access = str(refresh.access_token)
     refresh_token = str(refresh)
 
-    # Настраиваем флаги безопасности куки по своему профилю
+    # Adjust cookie security flags per your deployment profile
     response.set_cookie(
         'access_token',
         access,
         httponly=True,
         samesite='Lax',
-        # secure=True,  # в продакшене по HTTPS
+        # secure=True,  # enable in production over HTTPS
     )
     response.set_cookie(
         'refresh_token',
@@ -79,7 +81,8 @@ class LoginView(APIView):
       "username": "...",
       "password": "..."
     }
-    — выдаёт JWT в HttpOnly-куки.
+
+    Issues JWT tokens into HttpOnly cookies.
     """
     permission_classes = [AllowAny]
 
@@ -90,34 +93,35 @@ class LoginView(APIView):
         user = authenticate(request, username=username, password=password)
         if not user:
             return Response(
-                {"detail": "Неверное имя пользователя или пароль."},
+                {"detail": "Invalid username or password."},
                 status=status.HTTP_401_UNAUTHORIZED
             )
 
-        # Собираем ответ и сразу вручаем куки
-        response = Response({"detail": "Успешный вход"}, status=status.HTTP_200_OK)
+        # Build the response and attach cookies right away
+        response = Response({"detail": "Login successful"}, status=status.HTTP_200_OK)
         set_jwt_cookies(response, user)
         return response
 
 
 class LogoutView(APIView):
     """
-    POST /api/logout/ — удаляет куки и заносит refresh_token в blacklist.
+    POST /api/logout/ — removes cookies and blacklists the refresh_token.
     """
-    permission_classes = []  # можно разрешить и анонимам
+    # You may allow anonymous calls here so it’s idempotent
+    permission_classes = [AllowAny]
 
     def post(self, request, *args, **kwargs):
-        # 1) Получаем refresh из куки
+        # 1) Get refresh token from cookies and blacklist it (if configured)
         refresh_token = request.COOKIES.get('refresh_token')
         if refresh_token:
             try:
                 token = RefreshToken(refresh_token)
                 token.blacklist()
             except Exception:
-                # либо Simple JWT не настроен на blacklist, либо токен некорректен
+                # Either Simple JWT blacklist app isn’t enabled or token is invalid
                 pass
 
-        # 2) Удаляем куки
+        # 2) Clear cookies
         response = Response(status=status.HTTP_204_NO_CONTENT)
         response.delete_cookie('access_token')
         response.delete_cookie('refresh_token')

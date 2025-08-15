@@ -1,7 +1,6 @@
 from django.core.validators import MinValueValidator
 from django.db import models
 from django.contrib.auth.models import User
-from users.choices import UserRole
 from .choices import HousingType, ListingStatus
 
 

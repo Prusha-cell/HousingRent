@@ -6,5 +6,5 @@ class UsersConfig(AppConfig):
     name = 'users'
 
     def ready(self):
-        # импортируем module signals, чтобы зарегистрировать receiver
+        # import module signals to register receiver
         import users.signals

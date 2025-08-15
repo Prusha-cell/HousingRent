@@ -4,46 +4,18 @@ from django.contrib.auth.models import User
 from .models import UserProfile
 
 
-class UserProfileInline(admin.StackedInline):   # admin.StackedInline рисует поля профиля под полями пользователя.
-    model = UserProfile                         # говорит, что именно эту модель UserProfile мы показываем внутри User
-    can_delete = False                          # can_delete - отключает возможность удалить профиль прямо из inline.
+class UserProfileInline(admin.StackedInline):
+                                         # admin.StackedInline renders profile fields below the user fields.
+    model = UserProfile                  # show this model inline inside User
+    can_delete = False                   # disable deleting the profile from the inline
     verbose_name_plural = 'Profile'
 
 
-# Расширяем стандартный UserAdmin
+# Extend the default UserAdmin to include the profile inline
 class UserAdmin(BaseUserAdmin):
     inlines = (UserProfileInline,)
 
 
-admin.site.unregister(User)              # сначала удаляем стандартную регистрацию unregister(User) в админке,
-admin.site.register(User, UserAdmin)     # затем снова регистрируем, но уже с нашим кастомным UserAdmin,
-                                         # где подключён профиль.
-
-# class UserProfileInline(admin.StackedInline):
-#     model = UserProfile
-#     can_delete = False
-#     verbose_name_plural = 'Profile'
-#     fk_name = 'user'
-#
-#
-# @admin.register(User)
-# class UserAdmin(BaseUserAdmin):
-#     # добавляем инлайн с профилем
-#     inlines = (UserProfileInline,)
-#
-#     # расширяем столбцы списка пользователей
-#     list_display = (
-#         'username',
-#         'email',
-#         'first_name',
-#         'last_name',
-#         'get_role',
-#         'is_staff',
-#     )
-#     list_select_related = ('profile',)  # чтобы не делать лишних запросов
-#
-#     def get_role(self, obj):
-#         # вернёт значение поля role из связанного UserProfile
-#         return obj.profile.role
-#     get_role.short_description = 'Role'
-#     get_role.admin_order_field = 'profile__role'
+# Unregister the default User admin and register our customized one
+admin.site.unregister(User)
+admin.site.register(User, UserAdmin)

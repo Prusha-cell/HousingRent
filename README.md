@@ -1,33 +1,36 @@
 # HousingRent (Django + DRF)
 
-A clean, modular rental platform built on **Django** and **Django REST Framework**.  
-Domain modules:
+A modular rental platform built with **Django** and **Django REST Framework**.
 
-- **users** — базовый `auth.User` + профиль `UserProfile` с ролями: `tenant`, `landlord`, `admin`.
-- **listings** — объявления арендодателей (статусы: `available` / `unavailable`, счётчик просмотров).
-- **bookings** — бронирования объявлений (статусы: `pending`, `confirmed`, `rejected`, `cancelled`).
-- **reviews** — отзывы арендаторов по завершённым бронированиям (один отзыв на одну бронь).
-- **analytics** — история поисковых запросов и просмотров объявлений (+ сигнал инкремента счётчика просмотров).
+**Modules**
+
+- **users** – `auth.User` + `UserProfile` with roles: `tenant`, `landlord`, `admin`.
+- **listings** – landlords' rental listings (statuses: `available` / `unavailable`, view counter).
+- **bookings** – booking flow (statuses: `pending`, `confirmed`, `rejected`, `cancelled`).
+- **reviews** – tenant reviews tied to finished bookings (one review per booking).
+- **analytics** – search history and listing views (+ signal increments listing view counter).
 
 ---
 
 ## Quick start
 
 ### Requirements
-- Python 3.11+ (проект разрабатывался на 3.12/3.13 — подходит)
-- Django 4.x / DRF 3.x (устанавливаются из `requirements.txt`)
-- БД: **MySQL** (прод) или **SQLite** (локально/тесты)
+- Python 3.11+ (developed and tested on 3.12/3.13)
+- Django 4.x and DRF 3.x (installed from `requirements.txt`)
+- Database: **MySQL** (prod) or **SQLite** (local/tests)
 
 ### Setup
 
-1) **Создайте окружение и поставьте зависимости**
+1) **Create a virtualenv and install deps**
 ```bash
 python -m venv .venv
-source .venv/bin/activate   # Windows: .venv\Scripts\activate
+# Windows: .venv\Scripts\activate
+# Unix/macOS:
+source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-2) **Настройте окружение** (MySQL) — создайте файл `.env` в корне проекта:
+2) **Environment variables** (MySQL). Create `.env` in project root:
 ```
 # Django
 SECRET_KEY=change-me
@@ -42,162 +45,161 @@ DB_HOST=127.0.0.1
 DB_PORT=3306
 
 # Business settings
-BOOKING_CANCEL_DEADLINE_DAYS=1  # сколько дней до заезда доступна отмена брони
+BOOKING_CANCEL_DEADLINE_DAYS=1  # how many days before check-in a booking can be cancelled
 ```
 
-> Для локального старта можно использовать SQLite: выставьте переменные БД как в вашем `settings.py` (или используйте `settings_test.py`).
+> For quick local runs you may switch to SQLite in your settings (or use `settings_test.py`).
 
-3) **Прогоните миграции и создайте админа**
+3) **Migrate and create a superuser**
 ```bash
 python manage.py migrate
 python manage.py createsuperuser
 ```
 
-4) **(опционально) загрузите пример данных**
+4) **(Optional) Load sample data**
 ```bash
 python manage.py loaddata data_utf8.json
 ```
-> Django сериализует/читает фикстуры в **UTF-8**. Для выгрузки можно использовать:  
+> Django reads/writes fixtures in **UTF-8**. Export example:  
 > `python manage.py dumpdata --indent 2 > data_utf8.json`
 
-5) **Запустите сервер**
+5) **Run the server**
 ```bash
 python manage.py runserver
 ```
-
-Админ-панель: `http://127.0.0.1:8000/admin/`
+Admin: `http://127.0.0.1:8000/admin/`
 
 ---
 
-## Архитектура и доменная логика
+## Architecture & business rules
 
 ### users
-- `UserProfile (OneToOne → auth.User)` хранит роль (`tenant` / `landlord` / `admin`) и флаг `is_verified`.
-- Бизнес-правило: если `is_verified=True`, профиль принудительно переводится в роль **landlord** при сохранении.
-- Сигнал создаёт профиль при появлении нового пользователя.
-- Сериализаторы:
-  - `AdminUserWriteSerializer` — админское создание пользователей с вложенным `profile.role` и установкой пароля.
-  - Профильные сериализаторы для прокси-моделей `Tenant` / `Landlord` (чтение публичных данных пользователя).
+- `UserProfile (OneToOne → auth.User)` stores `role` (`tenant` / `landlord` / `admin`) and `is_verified`.
+- Business rule: if `is_verified=True`, the profile is forced to **landlord** on save.
+- A signal creates the profile when a new user is created.
+- Serializers:
+  - `AdminUserWriteSerializer` – admin user creation with nested `profile.role` and password hashing.
+  - Profile serializers for proxy models `Tenant` / `Landlord` (public read-only info).
 
 ### listings
-- `Listing` принадлежит арендодателю (`landlord = ForeignKey(User)`).
-- Публичный список (только чтение) и «мои объявления» для владельца (CRUD).
-- `views_count` увеличивается сигналом при создании `ListingView` (из модуля `analytics`).
+- `Listing` belongs to a landlord (`landlord = ForeignKey(User)`).
+- Public list (read-only) and “my listings” (CRUD for the owner).
+- `views_count` is incremented by an analytics signal when a `ListingView` is created.
 
 ### bookings
-- Нельзя бронировать **собственное** объявление.
-- Валидации: доступность объявления, корректность дат, отсутствие пересечений.
-- Отмена доступна до дедлайна: `BOOKING_CANCEL_DEADLINE_DAYS` (по умолчанию 1).
-- Экшены:
-  - `POST /api/bookings/<id>/confirm/` — только владелец объявления, только из `pending` → `confirmed`.
-  - `POST /api/bookings/<id>/reject/` — только владелец объявления, только из `pending` → `rejected`.
-  - `POST /api/bookings/<id>/cancel/` — только арендатор, до дедлайна, из статусов, допускающих отмену → `cancelled`.
-- Видимость:
-  - Арендатор видит **свои** брони.
-  - Арендодатель видит брони **по своим** объявлениям.
-  - Администратор может видеть всё.
+- A user **cannot book their own listing**.
+- Validations: listing availability, date ranges, no overlaps.
+- Cancellation allowed up to `BOOKING_CANCEL_DEADLINE_DAYS` before start date.
+- Actions:
+  - `POST /api/bookings/<id>/confirm/` — owner only; allowed **only from `pending`** → `confirmed`.
+  - `POST /api/bookings/<id>/reject/` — owner only; allowed **only from `pending`** → `rejected`.
+  - `POST /api/bookings/<id>/cancel/` — tenant only; before deadline → `cancelled`.
+- Visibility:
+  - Tenants see **their own** bookings.
+  - Landlords see bookings for **their listings**.
+  - Admins may see everything.
 
 ### reviews
-- Отзыв может оставить **только арендатор** по **своей** броне, которая **подтверждена** и уже **завершилась**.
-- **Один отзыв на одну бронь** (уникальность на уровне БД/сериализатора).
-- `listing` выводится/связывается автоматически через выбранную `booking`.
-- Редактировать/удалять отзыв может владелец или админ.
+- Only the **tenant** of a **confirmed** and **finished** booking can write a review.
+- **One review per booking** (DB uniqueness + serializer checks).
+- `listing` is inferred from `booking` automatically.
+- Owner/admin can update or delete the review.
 
 ### analytics
-- `SearchHistory(user, keyword, searched_at)` — история поисковых запросов.
-- `ListingView(user, listing, viewed_at)` — просмотры объявлений.
-- Сигнал `post_save(ListingView)` инкрементит `listing.views_count`.
+- `SearchHistory(user, keyword, searched_at)` — free-form search history.
+- `ListingView(user, listing, viewed_at)` — listing view events.
+- `post_save(ListingView)` signal increments `listing.views_count`.
 
 ---
 
-## API (основные эндпоинты)
+## API (main endpoints)
 
-Базовый префикс API: `/api/` (может отличаться, смотрите `config/urls.py`).
+Base API prefix: `/api/` (may differ in your `config/urls.py`).
 
 ### Listings
-Публичный (чтение):
+Public (read-only):
 ```
-GET    /api/listings/listings/                # список публичных объявлений
-GET    /api/listings/listings/<id>/           # детально
+GET    /api/listings/listings/
+GET    /api/listings/listings/<id>/
 ```
 
-Мои объявления (для landlord):
+My listings (landlord):
 ```
-GET    /api/listings/my-listings/             # только мои
-POST   /api/listings/my-listings/             # создать (требуется роль landlord)
-PATCH  /api/listings/my-listings/<id>/        # редактировать (только владелец)
-DELETE /api/listings/my-listings/<id>/        # удалить   (только владелец)
+GET    /api/listings/my-listings/
+POST   /api/listings/my-listings/
+PATCH  /api/listings/my-listings/<id>/
+DELETE /api/listings/my-listings/<id>/
 ```
 
 ### Bookings
 ```
-GET    /api/bookings/                         # мои брони (tenant) / брони по моим объявлениям (landlord)
-POST   /api/bookings/                         # создать бронь (tenant; нельзя бронировать своё объявление)
+GET    /api/bookings/                         # tenant: own; landlord: for own listings
+POST   /api/bookings/                         # create booking (tenant; cannot book own listing)
 
-POST   /api/bookings/<id>/confirm/            # только владелец объявления, из pending → confirmed
-POST   /api/bookings/<id>/reject/             # только владелец объявления, из pending → rejected
-POST   /api/bookings/<id>/cancel/             # только арендатор, до дедлайна → cancelled
+POST   /api/bookings/<id>/confirm/            # owner only, from pending → confirmed
+POST   /api/bookings/<id>/reject/             # owner only, from pending → rejected
+POST   /api/bookings/<id>/cancel/             # tenant only, before deadline → cancelled
 ```
 
 ### Reviews
 ```
-GET    /api/reviews/                          # список отзывов
-POST   /api/reviews/                          # создать (только арендатор своей завершённой confirmed-брони)
-PATCH  /api/reviews/<id>/                     # изменить (владелец/админ)
-DELETE /api/reviews/<id>/                     # удалить  (владелец/админ)
+GET    /api/reviews/
+POST   /api/reviews/                          # tenant of finished confirmed booking
+PATCH  /api/reviews/<id>/
+DELETE /api/reviews/<id>/
 ```
 
 ### Analytics
 ```
-GET    /api/analytics/search-history/         # мои поисковые запросы
-POST   /api/analytics/search-history/         # создать запись (user проставляется автоматически)
+GET    /api/analytics/search-history/         # current user’s searches
+POST   /api/analytics/search-history/         # user is set from request (HiddenField)
 
-GET    /api/analytics/listing-views/          # мои просмотры
-POST   /api/analytics/listing-views/          # создать просмотр (инкрементирует listing.views_count сигналом)
+GET    /api/analytics/listing-views/          # current user’s views
+POST   /api/analytics/listing-views/          # creates a view; signal increments listing.views_count
 ```
 
-> Аутентификация: в dev обычно **SessionAuth** (через логин в админке). Если подключён JWT (simplejwt), используйте заголовок `Authorization: Bearer <token>`.
+> Auth: for dev, **SessionAuth** (log into admin) is enough. If JWT (simplejwt) is enabled, use `Authorization: Bearer <token>`.
 
 ---
 
-## Тестирование
+## Testing
 
-Проект тестируется `pytest` + `pytest-django` + `model_bakery` + `DRF APIClient`.
+Powered by `pytest`, `pytest-django`, `model_bakery`, and DRF’s `APIClient`.
 
-Запуск всех тестов и покрытие:
+Run all tests and coverage:
 ```bash
 pytest
 pytest --cov=. --cov-report=term-missing
 ```
 
-Запуск части тестов по шаблону:
+Filter by pattern:
 ```bash
 pytest -k "listings and api" -q
 ```
 
-### Полезные фикстуры
+### Handy fixtures
 - `api_client` — DRF `APIClient`.
-- `user_with_profile(username, role, verified=False, **kwargs)` — создаёт `User` и синхронизированный `UserProfile` с нужной ролью.  
-  В фикстуре после сохранения профиля сбрасывается кэш `user.profile`, чтобы в тестах не было рассинхронизации OneToOne.
+- `user_with_profile(username, role, verified=False, **kwargs)` — creates a `User` and a synced `UserProfile`.  
+  The fixture refreshes `user.profile` to avoid OneToOne cache mismatches during tests.
 
 ---
 
-## Полезные команды
+## Useful commands
 
-**Создать/обновить суперпользователя**
+Create/update superuser:
 ```bash
 python manage.py createsuperuser
 ```
 
-**Сделать дамп/загрузку данных**
+Dump / load data:
 ```bash
 python manage.py dumpdata --indent 2 > data_utf8.json
 python manage.py loaddata data_utf8.json
 ```
 
-**Сбросить миграции и базу (локально)**
+Reset local DB & migrations (⚠️ destructive):
 ```bash
-# Осторожно: удалит данные!
+# This will remove local data and migration files
 find . -path "*/migrations/*.py" -not -name "__init__.py" -delete
 find . -path "*/migrations/*.pyc" -delete
 rm db.sqlite3
@@ -207,39 +209,39 @@ python manage.py migrate
 
 ---
 
-## Структура (сокращённо)
+## Project layout (short)
 ```
 config/
-    settings.py
-    settings_test.py
-    urls.py
+  settings.py
+  settings_test.py
+  urls.py
 users/
-    models.py        # UserProfile, сигналы, прокси Tenant/Landlord
-    serializers/     # admin_user.py, profiles.py, registration_for_users.py
-    views.py, urls.py
+  models.py                # UserProfile, signals, Tenant/Landlord proxies
+  serializers/             # admin_user.py, profiles.py, registration_for_users.py
+  views.py, urls.py
 listings/
-    models.py, views.py (ReadOnly + MyListingViewSet), permissions.py, urls.py
+  models.py, views.py (ReadOnly + MyListingViewSet), permissions.py, urls.py
 bookings/
-    models.py, serializers.py, views.py (confirm/reject/cancel), urls.py, choices.py
+  models.py, serializers.py, views.py (confirm/reject/cancel), urls.py, choices.py
 reviews/
-    models.py, serializers.py, views.py, urls.py, choices.py
+  models.py, serializers.py, views.py, urls.py, choices.py
 analytics/
-    models.py, serializers.py, views.py, urls.py, signals.py
-tests/               # модульные и интеграционные тесты по приложениям
+  models.py, serializers.py, views.py, urls.py, signals.py
+tests/
 ```
 
 ---
 
-## Частые вопросы
+## FAQ
 
-**Q:** Почему POST на `/api/listings/listings/` даёт `405`?  
-**A:** Публичный ViewSet — только чтение. Создавать нужно через `/api/listings/my-listings/` (требуется роль landlord).
+**Q:** Why does `POST /api/listings/listings/` return `405`?  
+**A:** The public viewset is read-only. Create listings via `/api/listings/my-listings/` (landlord role required).
 
-**Q:** Почему PATCH/DELETE чужого объявления дают `404`, а не `403`?  
-**A:** В «моих» объявлениях queryset ограничен текущим пользователем; объект «не существует» для чужого владельца → `404` (так безопаснее).
+**Q:** Why do I get `404` (not `403`) when patching/deleting someone else’s listing?  
+**A:** The “my-listings” queryset is restricted to the current user; for other users the object doesn’t exist → `404`.
 
-**Q:** Отмена брони не проходит — почему?  
-**A:** Проверьте `BOOKING_CANCEL_DEADLINE_DAYS` и дату заезда: отмена запрещена в день заезда и позже.
+**Q:** Why can’t I cancel a booking?  
+**A:** Check `BOOKING_CANCEL_DEADLINE_DAYS` and the check-in date — cancellation is blocked on the start day and later.
 
 ---
 

@@ -10,33 +10,37 @@ VIEWS_URL = f"{BASE}listing-views/"
 
 @pytest.mark.django_db
 def test_search_history_create_and_list_scope(api_client, user_with_profile):
+    """User should see only their own search history entries."""
     u1 = user_with_profile(username="u1", role="tenant")
     u2 = user_with_profile(username="u2", role="tenant")
 
-    # u1 создаёт две записи
+    # u1 creates two entries
     api_client.force_authenticate(user=u1)
     r1 = api_client.post(SEARCH_URL, {"keyword": "odessa"}, format="json")
     r2 = api_client.post(SEARCH_URL, {"keyword": "kyiv"}, format="json")
     assert r1.status_code in (200, 201)
     assert r2.status_code in (200, 201)
 
-    # u2 создаёт одну запись
+    # u2 creates one entry
     api_client.force_authenticate(user=u2)
     r3 = api_client.post(SEARCH_URL, {"keyword": "dnipro"}, format="json")
     assert r3.status_code in (200, 201)
 
-    # u1 видит только свои 2
+    # u1 should see only their two entries
     api_client.force_authenticate(user=u1)
     list_u1 = api_client.get(SEARCH_URL)
     assert list_u1.status_code == 200
     data_u1 = list_u1.json()
-    assert isinstance(data_u1, list)
-    assert len(data_u1) == 2
-    assert {item["keyword"] for item in data_u1} == {"odessa", "kyiv"}
+    assert data_u1["count"] == 2
+    items = data_u1["results"]
+    assert isinstance(items, list)
+    assert len(items) == 2
+    assert {item["keyword"] for item in items} == {"odessa", "kyiv"}
 
 
 @pytest.mark.django_db
 def test_search_history_requires_auth(api_client):
+    """Listing and creating search history require authentication."""
     r = api_client.get(SEARCH_URL)
     assert r.status_code in (401, 403)
     r2 = api_client.post(SEARCH_URL, {"keyword": "x"}, format="json")
@@ -45,46 +49,54 @@ def test_search_history_requires_auth(api_client):
 
 @pytest.mark.django_db
 def test_search_history_hidden_user_is_ignored(api_client, user_with_profile):
+    """
+    Even if the client sends someone else's 'user' in payload,
+    HiddenField must override it with request.user.
+    """
     u1 = user_with_profile(username="u1", role="tenant")
     u2 = user_with_profile(username="u2", role="tenant")
 
-    # даже если клиент пытается подставить чужой user — HiddenField перетрёт на request.user
     api_client.force_authenticate(user=u1)
     r = api_client.post(SEARCH_URL, {"keyword": "try", "user": u2.id}, format="json")
     assert r.status_code in (200, 201)
     assert r.json()["keyword"] == "try"
-    # и при чтении вернётся запись с user = u1
+
+    # Reading should return the record bound to u1
     lst = api_client.get(SEARCH_URL).json()
-    assert len(lst) == 1 and lst[0]["keyword"] == "try"
+    assert lst["count"] == 1
+    assert lst["results"][0]["keyword"] == "try"
 
 
 # ---- ListingView ----
 
 @pytest.mark.django_db
 def test_listing_view_create_and_list_scope(api_client, user_with_profile):
+    """User should see only their own listing-view events."""
     ll = user_with_profile(username="ll", role="landlord")
     u1 = user_with_profile(username="u1", role="tenant")
     u2 = user_with_profile(username="u2", role="tenant")
     listing = baker.make("listings.Listing", landlord=ll)
 
-    # u1 создаёт 2 просмотра
+    # u1 creates 2 views
     api_client.force_authenticate(user=u1)
     assert api_client.post(VIEWS_URL, {"listing": listing.id}, format="json").status_code in (200, 201)
     assert api_client.post(VIEWS_URL, {"listing": listing.id}, format="json").status_code in (200, 201)
 
-    # u2 создаёт 1 просмотр
+    # u2 creates 1 view
     api_client.force_authenticate(user=u2)
     assert api_client.post(VIEWS_URL, {"listing": listing.id}, format="json").status_code in (200, 201)
 
-    # u1 видит только свои 2
+    # u1 should see only their 2 views
     api_client.force_authenticate(user=u1)
     res = api_client.get(VIEWS_URL)
     assert res.status_code == 200
-    assert len(res.json()) == 2
+    assert res.json()["count"] == 2
+    assert len(res.json()["results"]) == 2
 
 
 @pytest.mark.django_db
 def test_listing_view_requires_auth(api_client):
+    """Listing and creating listing views require authentication."""
     r = api_client.get(VIEWS_URL)
     assert r.status_code in (401, 403)
     r2 = api_client.post(VIEWS_URL, {"listing": 1}, format="json")
@@ -93,7 +105,10 @@ def test_listing_view_requires_auth(api_client):
 
 @pytest.mark.django_db
 def test_listing_view_hidden_user_is_ignored_and_signal_increments(api_client, user_with_profile):
-    # проверим, что user в payload игнорируется (HiddenField) и сигнал увеличивает views_count
+    """
+    'user' field in payload must be ignored (HiddenField), and the signal should
+    increment Listing.views_count on create.
+    """
     ll = user_with_profile(username="ll", role="landlord")
     u1 = user_with_profile(username="u1", role="tenant")
     listing = baker.make("listings.Listing", landlord=ll, views_count=0)
@@ -102,6 +117,6 @@ def test_listing_view_hidden_user_is_ignored_and_signal_increments(api_client, u
     r = api_client.post(VIEWS_URL, {"listing": listing.id, "user": ll.id}, format="json")
     assert r.status_code in (200, 201)
 
-    # сигнал post_save должен был инкрементить
+    # post_save signal should increment views_count
     listing.refresh_from_db()
     assert listing.views_count == 1

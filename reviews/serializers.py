@@ -16,11 +16,11 @@ class UserShortSerializers(serializers.ModelSerializer):
 
 
 class ReviewSerializer(serializers.ModelSerializer):
-    # кто пишет отзыв — ставим из request.user
+    # The author of the review is taken from request.user
     tenant = serializers.HiddenField(default=serializers.CurrentUserDefault())
     tenant_info = UserShortSerializers(source='tenant', read_only=True)
 
-    # клиент присылает только booking; listing выставим автоматически
+    # The client sends only the booking; we'll set listing automatically
     booking = serializers.PrimaryKeyRelatedField(queryset=Booking.objects.all())
     listing = serializers.PrimaryKeyRelatedField(read_only=True)
 
@@ -29,46 +29,46 @@ class ReviewSerializer(serializers.ModelSerializer):
         fields = ('id', 'booking', 'listing', 'tenant_info', 'tenant', 'rating', 'comment', 'created_at')
         read_only_fields = ('id', 'tenant', 'listing', 'created_at')
         extra_kwargs = {
-            # опционально, чтобы не светить в ответе — но на создание он нужен
+            # Optional to hide in responses, but still required on create
             'booking': {'write_only': True}
         }
 
     def validate(self, attrs):
         user = self.context['request'].user
         if not user or not user.is_authenticated:
-            raise serializers.ValidationError("Требуется аутентификация.")
+            raise serializers.ValidationError("Authentication is required.")
 
         booking = attrs.get('booking') or getattr(self.instance, 'booking', None)
         if booking is None:
-            raise serializers.ValidationError({"booking": "Обязательное поле."})
+            raise serializers.ValidationError({"booking": "This field is required."})
 
-        # Нельзя оставлять отзыв на своё объявление
+        # Landlord cannot review their own listing
         if booking.listing.landlord_id == user.id:
-            raise serializers.ValidationError("Нельзя оставлять отзыв на собственное объявление.")
+            raise serializers.ValidationError("You cannot leave a review for your own listing.")
 
-        # Бронь должна принадлежать текущему пользователю
+        # The booking must belong to the current user
         if booking.tenant_id != user.id:
-            raise serializers.ValidationError("Отзыв можно оставить только по своей брони.")
+            raise serializers.ValidationError("You can only review your own booking.")
 
-        # Бронь — подтверждена и уже завершилась
+        # Booking must be confirmed and already finished
         today = timezone.localdate()
         if booking.status != BookingStatus.CONFIRMED:
-            raise serializers.ValidationError("Отзыв доступен только по подтверждённой брони.")
+            raise serializers.ValidationError("Reviews are allowed only for confirmed bookings.")
         if booking.end_date > today:
-            raise serializers.ValidationError("Отзыв можно оставить после окончания проживания.")
+            raise serializers.ValidationError("You can leave a review only after the stay has ended.")
 
-        # Нельзя второй отзыв по той же брони
+        # Only one review per booking per tenant
         qs = Review.objects.filter(tenant_id=user.id, booking_id=booking.id)
         if self.instance:
             qs = qs.exclude(pk=self.instance.pk)
         if qs.exists():
-            raise serializers.ValidationError("По этой брони отзыв уже оставлен.")
+            raise serializers.ValidationError("A review for this booking has already been submitted.")
 
-        # Зафиксировать listing из booking и запретить подмену
+        # Lock listing to the one from booking and prevent spoofing
         attrs['listing'] = booking.listing
 
-        # На апдейте запрещаем менять бронь
+        # On update, booking cannot be changed
         if self.instance and booking.id != self.instance.booking_id:
-            raise serializers.ValidationError("Нельзя менять бронь у существующего отзыва.")
+            raise serializers.ValidationError("You cannot change the booking on an existing review.")
 
         return attrs
