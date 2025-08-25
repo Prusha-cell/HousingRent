@@ -1,5 +1,6 @@
 import pytest
 from model_bakery import baker
+from freezegun import freeze_time
 
 BASE = "/api/analytics/"
 SEARCH_URL = f"{BASE}search-history/"
@@ -69,6 +70,7 @@ def test_search_history_hidden_user_is_ignored(api_client, user_with_profile):
 
 # ---- ListingView ----
 
+@freeze_time("2025-08-24 10:00:00")
 @pytest.mark.django_db
 def test_listing_view_create_and_list_scope(api_client, user_with_profile):
     """User should see only their own listing-view events."""
@@ -90,8 +92,14 @@ def test_listing_view_create_and_list_scope(api_client, user_with_profile):
     api_client.force_authenticate(user=u1)
     res = api_client.get(VIEWS_URL)
     assert res.status_code == 200
-    assert res.json()["count"] == 2
-    assert len(res.json()["results"]) == 2
+    # в тот же день — одна запись
+    assert res.json()["count"] == 1
+    # следующий день → вторая запись для u1
+    with freeze_time("2025-08-25 09:00:00"):
+        assert api_client.post(VIEWS_URL, {"listing": listing.id}, format="json").status_code in (200, 201)
+        res = api_client.get(VIEWS_URL)
+        assert res.status_code == 200
+        assert res.json()["count"] == 2
 
 
 @pytest.mark.django_db

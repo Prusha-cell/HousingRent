@@ -1,3 +1,4 @@
+from django.db import transaction
 from django.db.models import Q, F
 from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
@@ -44,14 +45,11 @@ class ListingViewSet(viewsets.ReadOnlyModelViewSet):
         # Log a single view per user per day
         if request.user.is_authenticated:
             today = timezone.localdate()
-            already = ListingView.objects.filter(
-                user=request.user, listing=instance, viewed_at__date=today
-            ).exists()
-            if not already:
-                ListingView.objects.create(user=request.user, listing=instance)
-                # Increment the counter
-                Listing.objects.filter(pk=instance.pk).update(
-                    views_count=F("views_count") + 1
+            with transaction.atomic():
+                _, _created = ListingView.objects.get_or_create(
+                    user=request.user,
+                    listing=instance,
+                    viewed_on=today,
                 )
 
         return super().retrieve(request, *args, **kwargs)

@@ -22,6 +22,9 @@ env = environ.Env(
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+LOG_DIR = Path(BASE_DIR) / 'logs'
+LOG_DIR.mkdir(exist_ok=True)
+
 # Load environment variables from .env
 environ.Env.read_env(os.path.join(BASE_DIR, ".env"))
 
@@ -61,10 +64,11 @@ MIDDLEWARE = [
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
+    "config.middleware.JWTAuthenticationMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "config.middleware.RequestContextMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    "config.middleware.JWTAuthenticationMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -182,3 +186,95 @@ SIMPLE_JWT = {
 # How many days before check-in a tenant can cancel a booking.
 # Example: 1 => cancellation allowed strictly before 1 day prior to start_date (not on the check-in day).
 BOOKING_CANCEL_DEADLINE_DAYS = 1  # 0 => allow until the day before check-in (excluding the check-in day)
+
+
+LOG_FORMAT_VERBOSE = "[%(asctime)s] %(levelname)s %(name)s req=%(request_id)s user=%(user_id)s: %(message)s"
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+
+    "filters": {
+        "request_context": {"()": "config.logging_utils.RequestContextFilter"},
+    },
+
+    "formatters": {
+        "verbose": {"format": LOG_FORMAT_VERBOSE},
+        "simple": {"format": "%(levelname)s %(message)s"},
+    },
+
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "level": "DEBUG" if DEBUG else "INFO",
+            "formatter": "simple",
+            "filters": ["request_context"],
+        },
+        "app_file": {
+            "class": "logging.handlers.TimedRotatingFileHandler",
+            "filename": str(LOG_DIR / "app.log"),
+            "when": "midnight",
+            "backupCount": 14,
+            "encoding": "utf-8",
+            "level": "INFO",
+            "formatter": "verbose",
+            "filters": ["request_context"],
+        },
+        "err_file": {
+            "class": "logging.handlers.TimedRotatingFileHandler",
+            "filename": str(LOG_DIR / "errors.log"),
+            "when": "midnight",
+            "backupCount": 30,
+            "encoding": "utf-8",
+            "level": "ERROR",
+            "formatter": "verbose",
+            "filters": ["request_context"],
+        },
+        "db_file": {
+            "class": "logging.handlers.TimedRotatingFileHandler",
+            "filename": str(LOG_DIR / "db.log"),
+            "when": "midnight",
+            "backupCount": 7,
+            "encoding": "utf-8",
+            "level": "DEBUG" if DEBUG else "WARNING",
+            "formatter": "verbose",
+            "filters": ["request_context"],
+        },
+    },
+
+    "loggers": {
+        # ваш код по умолчанию
+        "": {
+            "handlers": ["console", "app_file"],
+            "level": "DEBUG" if DEBUG else "INFO",
+        },
+
+        # ошибки HTTP (4xx/5xx) от Django
+        "django.request": {
+            "handlers": ["err_file", "console"],
+            "level": "ERROR",
+            "propagate": False,
+        },
+
+        # SQL — подробно только в DEBUG
+        "django.db.backends": {
+            "handlers": ["db_file"],
+            "level": "DEBUG" if DEBUG else "WARNING",
+            "propagate": False,
+        },
+
+        # security предупреждения (CSRF, SuspiciousOperation)
+        "django.security": {
+            "handlers": ["err_file", "console"],
+            "level": "WARNING",
+            "propagate": False,
+        },
+
+        # Access-лог из нашего middleware
+        "access": {
+            "handlers": ["console", "app_file"],
+            "level": "INFO",
+            "propagate": False,
+        },
+    },
+}

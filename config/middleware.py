@@ -1,8 +1,14 @@
+import logging
+import time
+import uuid
+
 from django.urls import resolve
 from django.utils.deprecation import MiddlewareMixin
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.token_blacklist.models import OutstandingToken, BlacklistedToken
+
+from config.logging_utils import request_id_ctx, user_id_ctx
 
 
 class JWTAuthenticationMiddleware(MiddlewareMixin):
@@ -66,4 +72,32 @@ class JWTAuthenticationMiddleware(MiddlewareMixin):
                     response.render()
                     return response
 
+        return response
+
+
+class RequestContextMiddleware(MiddlewareMixin):
+    def process_request(self, request):
+        request_id_ctx.set(str(uuid.uuid4()))
+        request._start_time = time.time()
+
+    def process_response(self, request, response):
+        try:
+            # к этому моменту DRF уже мог обратиться к request.user
+            user = getattr(request, "user", None)
+            if user and getattr(user, "is_authenticated", False):
+                user_id_ctx.set(str(user.pk))
+            else:
+                user_id_ctx.set("-")
+
+            duration_ms = int((time.time() - getattr(request, "_start_time", time.time())) * 1000)
+            logging.getLogger("access").info(
+                "%s %s -> %s (%dms)",
+                getattr(request, "method", "-"),
+                getattr(request, "path", "-"),
+                getattr(response, "status_code", "-"),
+                duration_ms,
+            )
+        finally:
+            request_id_ctx.set("-")
+            user_id_ctx.set("-")
         return response

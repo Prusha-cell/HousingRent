@@ -1,4 +1,6 @@
-from rest_framework import viewsets, permissions
+from rest_framework import viewsets, permissions, status
+from rest_framework.response import Response
+
 from .models import SearchHistory, ListingView
 from .serializers import SearchHistorySerializer, ListingViewSerializer
 
@@ -33,5 +35,21 @@ class ListingViewViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        # Only entries for the current user
-        return ListingView.objects.filter(user=self.request.user)
+        return (
+            ListingView.objects
+            .filter(user=self.request.user)
+            .select_related("listing")
+            .order_by("-viewed_at")
+        )
+
+    def create(self, request, *args, **kwargs):
+        ser = self.get_serializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        obj = ser.save()
+        out = self.get_serializer(obj).data
+        created = ser.context.get("was_created", True)
+        return Response(
+            out,
+            status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
+            headers=self.get_success_headers(out) if created else {},
+        )

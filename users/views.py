@@ -1,11 +1,18 @@
+from datetime import date
+
 from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
+from django.db.models import Prefetch
 from rest_framework import viewsets, permissions, mixins, status
 from rest_framework.permissions import AllowAny, IsAdminUser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from bookings.choices import BookingStatus
+from bookings.models import Booking
+from listings.choices import ListingStatus
+from listings.models import Listing
 from .models import Tenant, Landlord
 from users.serializers.profiles import (
     TenantSerializer,
@@ -24,16 +31,37 @@ class AdminUserViewSet(viewsets.ModelViewSet):
 
 # Endpoint /api/tenants/ — only users with TENANT role (via proxy model)
 class TenantViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = Tenant.objects.all()
     serializer_class = TenantSerializer
     permission_classes = [IsAdminUser]
+    queryset = (
+        Tenant.objects.all()
+        .prefetch_related(
+            Prefetch(
+                'bookings',
+                queryset=Booking.objects.filter(status=BookingStatus.CONFIRMED,
+                                                end_date__gte=date.today())
+
+                .select_related('tenant', 'listing'),
+                to_attr='prefetched_current_bookings'
+            )
+        )
+    )
 
 
 # Endpoint /api/landlords/ — only users with LANDLORD role (via proxy model)
 class LandlordViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = Landlord.objects.all()
     serializer_class = LandlordSerializer
     permission_classes = [IsAdminUser]
+    queryset = (
+        Landlord.objects.all()
+        .prefetch_related(
+            Prefetch(
+                'listings',
+                queryset=Listing.objects.filter(status=ListingStatus.AVAILABLE),
+                to_attr='prefetched_active_listings'
+            )
+        )
+    )
 
 
 class UserRegisterView(mixins.CreateModelMixin, viewsets.GenericViewSet):
